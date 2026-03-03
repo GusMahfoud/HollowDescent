@@ -50,16 +50,56 @@ namespace HollowDescent.LevelGen
             public Vector3 Position;
             public Vector3 Normal;
             public float Width;
+            public bool IsLevelExit;
         }
+
+        private Vector3? _lastGeneratedStartPosition;
 
         public bool HasGenerated() => _hasGenerated;
 
+        public Vector3? GetStartPosition() => _lastGeneratedStartPosition;
+
         public void Generate()
         {
-            if (_hasGenerated) return;
+            GenerateLevel(1);
+        }
+
+        public void GenerateLevel(int levelIndex)
+        {
             _rooms.Clear();
             _roomControllers.Clear();
+            _lastGeneratedStartPosition = null;
+            var existing = transform.Find("LevelRoot");
+            if (existing != null) Destroy(existing.gameObject);
 
+            var levelRoot = new GameObject("LevelRoot");
+            levelRoot.transform.SetParent(transform);
+
+            if (levelIndex == 1)
+                BuildLevel1Rooms();
+            else if (levelIndex == 2)
+                BuildLevel2Rooms();
+            else
+                BuildLevel1Rooms();
+
+            if (_rooms.Count > 0)
+                _lastGeneratedStartPosition = _rooms[0].Center;
+
+            foreach (var r in _rooms)
+            {
+                var roomGeo = new GameObject("RoomGeometry_" + r.Name);
+                roomGeo.transform.SetParent(levelRoot.transform);
+                BuildRoom(roomGeo.transform, r);
+                BuildRoomController(levelRoot.transform, r, roomGeo.transform);
+            }
+
+            _hasGenerated = true;
+            if (LevelManager.Instance != null)
+                LevelManager.Instance.RegisterLevelRoot(levelRoot);
+        }
+
+        private void BuildLevel1Rooms()
+        {
             var cx = 0f;
             var cz = 0f;
             var stepX = roomWidth + corridorLength;
@@ -75,7 +115,7 @@ namespace HollowDescent.LevelGen
                 Doors = new List<DoorLink>(),
                 Index = 0
             };
-            start.Doors.Add(new DoorLink { Position = start.Center + Vector3.right * (roomWidth * 0.5f), Normal = Vector3.right, Width = corridorWidth });
+            start.Doors.Add(new DoorLink { Position = start.Center + Vector3.right * (roomWidth * 0.5f), Normal = Vector3.right, Width = corridorWidth, IsLevelExit = false });
             _rooms.Add(start);
 
             cx += stepX;
@@ -89,9 +129,9 @@ namespace HollowDescent.LevelGen
                 Doors = new List<DoorLink>(),
                 Index = 1
             };
-            combat1.Doors.Add(new DoorLink { Position = combat1.Center + Vector3.left * (roomWidth * 0.5f), Normal = Vector3.left, Width = corridorWidth });
-            combat1.Doors.Add(new DoorLink { Position = combat1.Center + Vector3.forward * (roomDepth * 0.5f), Normal = Vector3.forward, Width = corridorWidth });
-            combat1.Doors.Add(new DoorLink { Position = combat1.Center + Vector3.back * (roomDepth * 0.5f), Normal = Vector3.back, Width = corridorWidth });
+            combat1.Doors.Add(new DoorLink { Position = combat1.Center + Vector3.left * (roomWidth * 0.5f), Normal = Vector3.left, Width = corridorWidth, IsLevelExit = false });
+            combat1.Doors.Add(new DoorLink { Position = combat1.Center + Vector3.forward * (roomDepth * 0.5f), Normal = Vector3.forward, Width = corridorWidth, IsLevelExit = false });
+            combat1.Doors.Add(new DoorLink { Position = combat1.Center + Vector3.back * (roomDepth * 0.5f), Normal = Vector3.back, Width = corridorWidth, IsLevelExit = false });
             _rooms.Add(combat1);
 
             var branchA = new RoomDef
@@ -104,8 +144,8 @@ namespace HollowDescent.LevelGen
                 Doors = new List<DoorLink>(),
                 Index = 2
             };
-            branchA.Doors.Add(new DoorLink { Position = branchA.Center + Vector3.back * (roomDepth * 0.5f), Normal = Vector3.back, Width = corridorWidth });
-            branchA.Doors.Add(new DoorLink { Position = branchA.Center + Vector3.right * (roomWidth * 0.5f), Normal = Vector3.right, Width = corridorWidth });
+            branchA.Doors.Add(new DoorLink { Position = branchA.Center + Vector3.back * (roomDepth * 0.5f), Normal = Vector3.back, Width = corridorWidth, IsLevelExit = false });
+            branchA.Doors.Add(new DoorLink { Position = branchA.Center + Vector3.right * (roomWidth * 0.5f), Normal = Vector3.right, Width = corridorWidth, IsLevelExit = false });
             _rooms.Add(branchA);
 
             var branchB = new RoomDef
@@ -118,8 +158,8 @@ namespace HollowDescent.LevelGen
                 Doors = new List<DoorLink>(),
                 Index = 3
             };
-            branchB.Doors.Add(new DoorLink { Position = branchB.Center + Vector3.forward * (roomDepth * 0.5f), Normal = Vector3.forward, Width = corridorWidth });
-            branchB.Doors.Add(new DoorLink { Position = branchB.Center + Vector3.right * (roomWidth * 0.5f), Normal = Vector3.right, Width = corridorWidth });
+            branchB.Doors.Add(new DoorLink { Position = branchB.Center + Vector3.forward * (roomDepth * 0.5f), Normal = Vector3.forward, Width = corridorWidth, IsLevelExit = false });
+            branchB.Doors.Add(new DoorLink { Position = branchB.Center + Vector3.right * (roomWidth * 0.5f), Normal = Vector3.right, Width = corridorWidth, IsLevelExit = false });
             _rooms.Add(branchB);
 
             cx += stepX;
@@ -133,8 +173,8 @@ namespace HollowDescent.LevelGen
                 Doors = new List<DoorLink>(),
                 Index = 4
             };
-            reconverge.Doors.Add(new DoorLink { Position = reconverge.Center + Vector3.left * (reconverge.W * 0.5f), Normal = Vector3.left, Width = corridorWidth });
-            reconverge.Doors.Add(new DoorLink { Position = reconverge.Center + Vector3.right * (reconverge.W * 0.5f), Normal = Vector3.right, Width = corridorWidth });
+            reconverge.Doors.Add(new DoorLink { Position = reconverge.Center + Vector3.left * (reconverge.W * 0.5f), Normal = Vector3.left, Width = corridorWidth, IsLevelExit = false });
+            reconverge.Doors.Add(new DoorLink { Position = reconverge.Center + Vector3.right * (reconverge.W * 0.5f), Normal = Vector3.right, Width = corridorWidth, IsLevelExit = false });
             _rooms.Add(reconverge);
 
             cx += reconverge.W * 0.5f + corridorLength + roomWidth * 0.5f;
@@ -148,9 +188,89 @@ namespace HollowDescent.LevelGen
                 Doors = new List<DoorLink>(),
                 Index = 5
             };
-            shop.Doors.Add(new DoorLink { Position = shop.Center + Vector3.left * (roomWidth * 0.5f), Normal = Vector3.left, Width = corridorWidth });
-            shop.Doors.Add(new DoorLink { Position = shop.Center + Vector3.right * (roomWidth * 0.5f), Normal = Vector3.right, Width = corridorWidth });
+            shop.Doors.Add(new DoorLink { Position = shop.Center + Vector3.left * (roomWidth * 0.5f), Normal = Vector3.left, Width = corridorWidth, IsLevelExit = false });
+            shop.Doors.Add(new DoorLink { Position = shop.Center + Vector3.right * (roomWidth * 0.5f), Normal = Vector3.right, Width = corridorWidth, IsLevelExit = false });
             _rooms.Add(shop);
+
+            cx += stepX;
+            var levelExit = new RoomDef
+            {
+                Center = new Vector3(cx, 0f, cz),
+                W = roomWidth,
+                D = roomDepth,
+                Type = RoomType.LevelExit,
+                Name = "To Level 2",
+                Doors = new List<DoorLink>(),
+                Index = 6
+            };
+            levelExit.Doors.Add(new DoorLink { Position = levelExit.Center + Vector3.left * (roomWidth * 0.5f), Normal = Vector3.left, Width = corridorWidth, IsLevelExit = false });
+            levelExit.Doors.Add(new DoorLink { Position = levelExit.Center + Vector3.right * (roomWidth * 0.5f), Normal = Vector3.right, Width = corridorWidth, IsLevelExit = true });
+            _rooms.Add(levelExit);
+        }
+
+        private void BuildLevel2Rooms()
+        {
+            var cx = 0f;
+            var cz = 0f;
+            var stepX = roomWidth + corridorLength;
+
+            var start = new RoomDef
+            {
+                Center = new Vector3(cx, 0f, cz),
+                W = roomWidth,
+                D = roomDepth,
+                Type = RoomType.StartSafe,
+                Name = "Level 2 Start (Safe)",
+                Doors = new List<DoorLink>(),
+                Index = 0
+            };
+            start.Doors.Add(new DoorLink { Position = start.Center + Vector3.right * (roomWidth * 0.5f), Normal = Vector3.right, Width = corridorWidth, IsLevelExit = false });
+            _rooms.Add(start);
+
+            cx += stepX;
+            var combat1 = new RoomDef
+            {
+                Center = new Vector3(cx, 0f, cz),
+                W = roomWidth,
+                D = roomDepth,
+                Type = RoomType.Combat,
+                Name = "L2 Combat 1",
+                Doors = new List<DoorLink>(),
+                Index = 1
+            };
+            combat1.Doors.Add(new DoorLink { Position = combat1.Center + Vector3.left * (roomWidth * 0.5f), Normal = Vector3.left, Width = corridorWidth, IsLevelExit = false });
+            combat1.Doors.Add(new DoorLink { Position = combat1.Center + Vector3.right * (roomWidth * 0.5f), Normal = Vector3.right, Width = corridorWidth, IsLevelExit = false });
+            _rooms.Add(combat1);
+
+            cx += stepX;
+            var combat2 = new RoomDef
+            {
+                Center = new Vector3(cx, 0f, cz),
+                W = roomWidth,
+                D = roomDepth,
+                Type = RoomType.Combat,
+                Name = "L2 Combat 2",
+                Doors = new List<DoorLink>(),
+                Index = 2
+            };
+            combat2.Doors.Add(new DoorLink { Position = combat2.Center + Vector3.left * (roomWidth * 0.5f), Normal = Vector3.left, Width = corridorWidth, IsLevelExit = false });
+            combat2.Doors.Add(new DoorLink { Position = combat2.Center + Vector3.right * (roomWidth * 0.5f), Normal = Vector3.right, Width = corridorWidth, IsLevelExit = false });
+            _rooms.Add(combat2);
+
+            cx += stepX;
+            var safe = new RoomDef
+            {
+                Center = new Vector3(cx, 0f, cz),
+                W = roomWidth,
+                D = roomDepth,
+                Type = RoomType.Safe,
+                Name = "L2 Safe",
+                Doors = new List<DoorLink>(),
+                Index = 3
+            };
+            safe.Doors.Add(new DoorLink { Position = safe.Center + Vector3.left * (roomWidth * 0.5f), Normal = Vector3.left, Width = corridorWidth, IsLevelExit = false });
+            safe.Doors.Add(new DoorLink { Position = safe.Center + Vector3.right * (roomWidth * 0.5f), Normal = Vector3.right, Width = corridorWidth, IsLevelExit = false });
+            _rooms.Add(safe);
 
             cx += stepX;
             var boss = new RoomDef
@@ -159,25 +279,12 @@ namespace HollowDescent.LevelGen
                 W = roomWidth,
                 D = roomDepth,
                 Type = RoomType.Boss,
-                Name = "Boss / Exit",
+                Name = "L2 Boss",
                 Doors = new List<DoorLink>(),
-                Index = 6
+                Index = 4
             };
-            boss.Doors.Add(new DoorLink { Position = boss.Center + Vector3.left * (roomWidth * 0.5f), Normal = Vector3.left, Width = corridorWidth });
+            boss.Doors.Add(new DoorLink { Position = boss.Center + Vector3.left * (roomWidth * 0.5f), Normal = Vector3.left, Width = corridorWidth, IsLevelExit = false });
             _rooms.Add(boss);
-
-            var levelRoot = new GameObject("LevelRoot");
-            levelRoot.transform.SetParent(transform);
-
-            foreach (var r in _rooms)
-            {
-                var roomGeo = new GameObject("RoomGeometry_" + r.Name);
-                roomGeo.transform.SetParent(levelRoot.transform);
-                BuildRoom(roomGeo.transform, r);
-                BuildRoomController(levelRoot.transform, r, roomGeo.transform);
-            }
-
-            _hasGenerated = true;
         }
 
         private void BuildRoom(Transform parent, RoomDef r)
@@ -190,7 +297,7 @@ namespace HollowDescent.LevelGen
             floor.transform.position = r.Center;
             floor.transform.localScale = new Vector3(r.W / 10f, 1f, r.D / 10f);
             var floorMat = floor.GetComponent<Renderer>().material;
-            if (r.Type == RoomType.StartSafe || r.Type == RoomType.Safe)
+            if (r.Type == RoomType.StartSafe || r.Type == RoomType.Safe || r.Type == RoomType.LevelExit)
                 floorMat.color = new Color(0.5f, 0.55f, 0.45f);
             else if (r.Type == RoomType.Boss)
                 floorMat.color = new Color(0.4f, 0.35f, 0.45f);
@@ -203,7 +310,7 @@ namespace HollowDescent.LevelGen
             var light = lightGo.AddComponent<Light>();
             light.type = LightType.Point;
             light.range = Mathf.Max(r.W, r.D) * 0.8f;
-            if (r.Type == RoomType.StartSafe || r.Type == RoomType.Safe)
+            if (r.Type == RoomType.StartSafe || r.Type == RoomType.Safe || r.Type == RoomType.LevelExit)
             {
                 light.intensity = safeRoomLightIntensity;
                 light.color = safeRoomTint;
@@ -219,19 +326,48 @@ namespace HollowDescent.LevelGen
 
             foreach (var door in r.Doors)
             {
-                var doorBlocker = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                doorBlocker.name = "DoorBlocker";
-                doorBlocker.transform.SetParent(parent);
-                doorBlocker.transform.position = door.Position + Vector3.up * (wallHeight * 0.5f);
-                doorBlocker.transform.localScale = new Vector3(door.Width, wallHeight, 1f);
-                if (door.Normal.x != 0) doorBlocker.transform.localScale = new Vector3(1f, wallHeight, door.Width);
-                doorBlocker.GetComponent<Renderer>().material.color = new Color(0.3f, 0.25f, 0.2f);
-                doorBlocker.tag = "DoorBlocker";
-                BuildCorridorSegment(parent, door);
+                if (door.IsLevelExit)
+                {
+                    var exitTriggerGo = new GameObject("LevelExitTrigger");
+                    exitTriggerGo.transform.SetParent(parent);
+                    exitTriggerGo.transform.position = door.Position + door.Normal * 1f + Vector3.up * (wallHeight * 0.5f);
+                    var box = exitTriggerGo.AddComponent<BoxCollider>();
+                    box.isTrigger = true;
+                    box.size = new Vector3(door.Width + 1f, wallHeight, 2f);
+                    if (door.Normal.x != 0) box.size = new Vector3(2f, wallHeight, door.Width + 1f);
+                    exitTriggerGo.AddComponent<LevelExitTrigger>();
+                }
+                else
+                {
+                    var doorBlocker = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    doorBlocker.name = "DoorBlocker";
+                    doorBlocker.transform.SetParent(parent);
+                    doorBlocker.transform.position = door.Position + Vector3.up * (wallHeight * 0.5f);
+                    doorBlocker.transform.localScale = new Vector3(door.Width, wallHeight, 1f);
+                    if (door.Normal.x != 0) doorBlocker.transform.localScale = new Vector3(1f, wallHeight, door.Width);
+                    doorBlocker.GetComponent<Renderer>().material.color = new Color(0.3f, 0.25f, 0.2f);
+                    BuildCorridorSegment(parent, door);
+                }
             }
 
             PlaceOcclusionAndLandmarks(parent, r);
             PlaceRaisedPads(parent, r);
+            if (r.Type == RoomType.LevelExit)
+                PlaceLevelExitObject(parent, r);
+        }
+
+        private void PlaceLevelExitObject(Transform parent, RoomDef r)
+        {
+            var exitObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            exitObj.name = "LevelExit_ToLevel2";
+            exitObj.transform.SetParent(parent);
+            exitObj.transform.position = r.Center + new Vector3(0f, 1.2f, 0f);
+            exitObj.transform.localScale = new Vector3(2.5f, 2.5f, 2.5f);
+            var rend = exitObj.GetComponent<Renderer>();
+            if (rend != null) rend.material.color = new Color(0.2f, 0.6f, 1f);
+            var col = exitObj.GetComponent<Collider>();
+            if (col != null) col.isTrigger = true;
+            exitObj.AddComponent<LevelExitTrigger>();
         }
 
         private void BuildCorridorSegment(Transform parent, DoorLink door)
@@ -377,9 +513,18 @@ namespace HollowDescent.LevelGen
             var rc = go.AddComponent<RoomController>();
             rc.roomType = r.Type;
             rc.roomName = r.Name;
-            rc.chaserCount = r.Type == RoomType.Boss ? 3 : 2;
-            rc.shooterCount = r.Index >= 2 ? 1 : 0;
-            rc.flankerCount = r.Type == RoomType.Combat || r.Type == RoomType.Boss ? 1 : 0;
+            if (r.Type == RoomType.LevelExit)
+            {
+                rc.chaserCount = 0;
+                rc.shooterCount = 0;
+                rc.flankerCount = 0;
+            }
+            else
+            {
+                rc.chaserCount = r.Type == RoomType.Boss ? 3 : 2;
+                rc.shooterCount = r.Index >= 2 ? 1 : 0;
+                rc.flankerCount = r.Type == RoomType.Combat || r.Type == RoomType.Boss ? 1 : 0;
+            }
 
             for (var i = 0; i < geometryParent.childCount; i++)
             {
@@ -387,20 +532,23 @@ namespace HollowDescent.LevelGen
                 if (t.name == "DoorBlocker") rc.RegisterDoor(t);
             }
 
-            var halfW = r.W * 0.5f - 1.5f;
-            var halfD = r.D * 0.5f - 1.5f;
-            var sp1 = new GameObject("Spawn1");
-            sp1.transform.SetParent(go.transform);
-            sp1.transform.localPosition = new Vector3(halfW * 0.5f, 0f, halfD * 0.5f);
-            rc.RegisterSpawnPoint(sp1.transform, false);
-            var sp2 = new GameObject("Spawn2");
-            sp2.transform.SetParent(go.transform);
-            sp2.transform.localPosition = new Vector3(-halfW * 0.6f, 0f, -halfD * 0.5f);
-            rc.RegisterSpawnPoint(sp2.transform, false);
-            var spFlank = new GameObject("SpawnFlank");
-            spFlank.transform.SetParent(go.transform);
-            spFlank.transform.localPosition = new Vector3(-halfW * 0.4f, 0f, halfD * 0.3f);
-            rc.RegisterSpawnPoint(spFlank.transform, true);
+            if (r.Type == RoomType.Combat || r.Type == RoomType.Boss)
+            {
+                var halfW = r.W * 0.5f - 1.5f;
+                var halfD = r.D * 0.5f - 1.5f;
+                var sp1 = new GameObject("Spawn1");
+                sp1.transform.SetParent(go.transform);
+                sp1.transform.localPosition = new Vector3(halfW * 0.5f, 0f, halfD * 0.5f);
+                rc.RegisterSpawnPoint(sp1.transform, false);
+                var sp2 = new GameObject("Spawn2");
+                sp2.transform.SetParent(go.transform);
+                sp2.transform.localPosition = new Vector3(-halfW * 0.6f, 0f, -halfD * 0.5f);
+                rc.RegisterSpawnPoint(sp2.transform, false);
+                var spFlank = new GameObject("SpawnFlank");
+                spFlank.transform.SetParent(go.transform);
+                spFlank.transform.localPosition = new Vector3(-halfW * 0.4f, 0f, halfD * 0.3f);
+                rc.RegisterSpawnPoint(spFlank.transform, true);
+            }
 
             _roomControllers.Add(rc);
         }

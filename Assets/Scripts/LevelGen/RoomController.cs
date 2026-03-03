@@ -12,7 +12,8 @@ namespace HollowDescent.LevelGen
         Combat,
         Safe,
         Boss,
-        Exit
+        Exit,
+        LevelExit
     }
 
     /// <summary>
@@ -51,7 +52,7 @@ namespace HollowDescent.LevelGen
 
         private void Start()
         {
-            if (roomType == RoomType.StartSafe || roomType == RoomType.Safe)
+            if (roomType == RoomType.StartSafe || roomType == RoomType.Safe || roomType == RoomType.LevelExit)
                 SetDoorsOpen(true);
         }
 
@@ -79,7 +80,7 @@ namespace HollowDescent.LevelGen
             if (!other.CompareTag("Player")) return;
             if (GameManager.Instance != null)
                 GameManager.Instance.SetCurrentRoom(roomName);
-            if (roomType == RoomType.StartSafe || roomType == RoomType.Safe) return;
+            if (roomType == RoomType.StartSafe || roomType == RoomType.Safe || roomType == RoomType.LevelExit) return;
             if (_encounterCleared) return;
             if (roomType != RoomType.Combat && roomType != RoomType.Boss) return;
             if (_encounterActive) return;
@@ -173,7 +174,6 @@ namespace HollowDescent.LevelGen
             go.name = "Enemy_Chaser";
             go.transform.position = pos;
             go.transform.localScale = new Vector3(0.9f, 1.2f, 0.9f);
-            go.tag = "Enemy";
             var col = go.GetComponent<Collider>();
             if (col != null) col.isTrigger = false;
             var rb = go.AddComponent<Rigidbody>();
@@ -192,7 +192,6 @@ namespace HollowDescent.LevelGen
             go.name = "Enemy_Shooter";
             go.transform.position = pos;
             go.transform.localScale = new Vector3(0.8f, 1f, 0.8f);
-            go.tag = "Enemy";
             var col = go.GetComponent<Collider>();
             if (col != null) col.isTrigger = false;
             var rb = go.AddComponent<Rigidbody>();
@@ -210,7 +209,6 @@ namespace HollowDescent.LevelGen
             go.name = "Enemy_Flanker";
             go.transform.position = pos;
             go.transform.localScale = new Vector3(0.7f, 1f, 0.7f);
-            go.tag = "Enemy";
             var col = go.GetComponent<Collider>();
             if (col != null) col.isTrigger = false;
             var rb = go.AddComponent<Rigidbody>();

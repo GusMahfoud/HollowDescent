@@ -26,6 +26,7 @@ namespace HollowDescent.Bootstrap
         private void Start()
         {
             EnsureGameManager();
+            EnsureLevelManager();
             EnsurePlayer();
             EnsureCamera();
             EnsureFloor();
@@ -43,6 +44,13 @@ namespace HollowDescent.Bootstrap
             go.AddComponent<MinimalHUD>();
         }
 
+        private void EnsureLevelManager()
+        {
+            if (FindFirstObjectByType<LevelManager>() != null) return;
+            var go = new GameObject("LevelManager");
+            go.AddComponent<LevelManager>();
+        }
+
         private void EnsurePlayer()
         {
             if (playerPrefabOrNull != null)
@@ -57,6 +65,11 @@ namespace HollowDescent.Bootstrap
             _player.tag = "Player";
             var col = _player.GetComponent<Collider>();
             if (col != null) col.isTrigger = false;
+            var rb = _player.AddComponent<Rigidbody>();
+            rb.isKinematic = true;
+            rb.useGravity = false;
+            rb.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY;
+            rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
             _player.AddComponent<PlayerControllerTopDown>();
             _player.AddComponent<PlayerHealth>();
         }
