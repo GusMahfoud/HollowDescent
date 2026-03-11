@@ -360,6 +360,16 @@ namespace HollowDescent.LevelGen
             PlaceAtmosphericLighting(parent, r);
             PlaceFloorDecals(parent, r);
             PlaceParticleEffects(parent, r);
+
+            // === STEP 4: DYNAMIC WORLDBUILDING – random event per combat room ===
+            if (r.Type == RoomType.Combat || r.Type == RoomType.Boss)
+            {
+                var eventGo = new GameObject("RandomEvent_" + r.Name);
+                eventGo.transform.SetParent(parent);
+                eventGo.transform.position = r.Center;
+                var rre = eventGo.AddComponent<RandomRoomEvents>();
+                rre.Init(r.Center, r.W, r.D, wallHeight);
+            }
         }
 
         private void PlaceLevelExitObject(Transform parent, RoomDef r)
