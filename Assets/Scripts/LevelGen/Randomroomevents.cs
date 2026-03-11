@@ -112,7 +112,9 @@ namespace HollowDescent.LevelGen
             var vel = ps.velocityOverLifetime;
             vel.enabled = true;
             vel.space = ParticleSystemSimulationSpace.World;
+            vel.x = new ParticleSystem.MinMaxCurve(0f, 0f);
             vel.y = new ParticleSystem.MinMaxCurve(0.02f, 0.1f);
+            vel.z = new ParticleSystem.MinMaxCurve(0f, 0f);
 
             var col = ps.colorOverLifetime;
             col.enabled = true;
@@ -313,8 +315,12 @@ namespace HollowDescent.LevelGen
             var vel = ps.velocityOverLifetime;
             vel.enabled = true;
             vel.space = ParticleSystemSimulationSpace.World;
+            vel.x = new ParticleSystem.MinMaxCurve(0f, 0f);
             vel.y = new ParticleSystem.MinMaxCurve(0.4f, 1f);
+            vel.z = new ParticleSystem.MinMaxCurve(0f, 0f);
+            vel.orbitalX = new ParticleSystem.MinMaxCurve(0f, 0f);
             vel.orbitalY = new ParticleSystem.MinMaxCurve(3f, 5f);
+            vel.orbitalZ = new ParticleSystem.MinMaxCurve(0f, 0f);
         }
 
         // ── HELPERS ─────────────────────────────────────────────────────

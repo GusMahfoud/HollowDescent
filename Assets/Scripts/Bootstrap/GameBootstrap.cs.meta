@@ -1,2 +1,16 @@
 fileFormatVersion: 2
 guid: e1fb14e5445f68745bbb65e8d0952ef4
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - playerPrefabOrNull: {instanceID: 0}
+  - mainCameraOrNull: {instanceID: 0}
+  - floorGeneratorOrNull: {instanceID: 0}
+  - gameManagerOrNull: {instanceID: 0}
+  - finalRoomNarrativeClip: {fileID: 8300000, guid: 3f9c4f1b02abbf84987d14656c3c8ff9, type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

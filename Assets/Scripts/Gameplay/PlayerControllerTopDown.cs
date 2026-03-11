@@ -17,6 +17,7 @@ namespace HollowDescent.Gameplay
         [SerializeField] private float projectileSpeed = 18f;
         [SerializeField] private float projectileLifetime = 2f;
         [SerializeField] private float projectileRadius = 0.25f;
+        [SerializeField] private float projectileSpawnHeight = 0f;
 
         [Header("Debug (aim/shoot)")]
         [SerializeField] private bool enableAimDebug = false;
@@ -25,10 +26,13 @@ namespace HollowDescent.Gameplay
 
         private float _nextFireTime;
         private Camera _cam;
+        private Rigidbody _rb;
+        private Vector3 _moveInput;
 
         private void Awake()
         {
             _cam = Camera.main;
+            _rb = GetComponent<Rigidbody>();
         }
 
         private void Update()
@@ -42,13 +46,23 @@ namespace HollowDescent.Gameplay
                 if (Keyboard.current[Key.W].isPressed) v += 1f;
                 if (Keyboard.current[Key.S].isPressed) v -= 1f;
             }
-            var dir = new Vector3(h, 0f, v).normalized;
-            if (dir.sqrMagnitude > 0.01f)
-                transform.position += dir * (moveSpeed * Time.deltaTime);
+            _moveInput = new Vector3(h, 0f, v).normalized;
 
             AimAtMouse();
             if (Mouse.current != null && Mouse.current.leftButton.isPressed && Time.time >= _nextFireTime)
                 Shoot();
+        }
+
+        private void FixedUpdate()
+        {
+            if (_moveInput.sqrMagnitude <= 0.01f) return;
+            var delta = _moveInput * (moveSpeed * Time.fixedDeltaTime);
+            if (_rb != null)
+            {
+                _rb.MovePosition(_rb.position + delta);
+                return;
+            }
+            transform.position += delta;
         }
 
         private bool GetCursorAimDirection(out Vector3 direction)
@@ -142,7 +156,7 @@ namespace HollowDescent.Gameplay
             if (aimDir.sqrMagnitude < 0.01f) aimDir = new Vector3(0f, 0f, 1f);
             aimDir = aimDir.normalized;
             _nextFireTime = Time.time + fireRate;
-            var shootOrigin = transform.position + Vector3.up * 1f + aimDir * 1.5f;
+            var shootOrigin = transform.position + Vector3.up * projectileSpawnHeight + aimDir * 1.5f;
             var proj = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             proj.name = "Projectile";
             proj.transform.position = shootOrigin;

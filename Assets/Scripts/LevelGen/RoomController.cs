@@ -52,8 +52,8 @@ namespace HollowDescent.LevelGen
 
         private void Start()
         {
-            if (roomType == RoomType.StartSafe || roomType == RoomType.Safe || roomType == RoomType.LevelExit)
-                SetDoorsOpen(true);
+            // Rooms should be traversable by default; combat rooms lock only once encounter starts.
+            SetDoorsOpen(true);
         }
 
         public void SetDoorsOpen(bool open)

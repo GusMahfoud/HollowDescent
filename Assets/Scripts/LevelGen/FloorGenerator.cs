@@ -167,13 +167,15 @@ namespace HollowDescent.LevelGen
             {
                 Center = new Vector3(cx, 0f, cz),
                 W = roomWidth + 2f,
-                D = roomDepth * 2f + corridorLength,
+                // Keep enough vertical span to receive both branch corridors.
+                D = roomDepth * 3f,
                 Type = RoomType.Combat,
                 Name = "Reconverge",
                 Doors = new List<DoorLink>(),
                 Index = 4
             };
-            reconverge.Doors.Add(new DoorLink { Position = reconverge.Center + Vector3.left * (reconverge.W * 0.5f), Normal = Vector3.left, Width = corridorWidth, IsLevelExit = false });
+            reconverge.Doors.Add(new DoorLink { Position = reconverge.Center + Vector3.left * (reconverge.W * 0.5f) + Vector3.forward * stepZ, Normal = Vector3.left, Width = corridorWidth, IsLevelExit = false });
+            reconverge.Doors.Add(new DoorLink { Position = reconverge.Center + Vector3.left * (reconverge.W * 0.5f) + Vector3.back * stepZ, Normal = Vector3.left, Width = corridorWidth, IsLevelExit = false });
             reconverge.Doors.Add(new DoorLink { Position = reconverge.Center + Vector3.right * (reconverge.W * 0.5f), Normal = Vector3.right, Width = corridorWidth, IsLevelExit = false });
             _rooms.Add(reconverge);
 
@@ -857,8 +859,12 @@ namespace HollowDescent.LevelGen
                 var vel = embers.velocityOverLifetime;
                 vel.enabled = true;
                 vel.space = ParticleSystemSimulationSpace.World;
+                vel.x = new ParticleSystem.MinMaxCurve(0f, 0f);
                 vel.y = new ParticleSystem.MinMaxCurve(0.5f, 1.5f);
+                vel.z = new ParticleSystem.MinMaxCurve(0f, 0f);
+                vel.orbitalX = new ParticleSystem.MinMaxCurve(0f, 0f);
                 vel.orbitalY = new ParticleSystem.MinMaxCurve(2f, 4f);
+                vel.orbitalZ = new ParticleSystem.MinMaxCurve(0f, 0f);
 
                 // Color fades from bright orange/blue to transparent
                 var col = embers.colorOverLifetime;
@@ -899,3 +905,5 @@ namespace HollowDescent.LevelGen
         }
     }
 }
+
+
