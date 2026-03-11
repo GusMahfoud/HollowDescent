@@ -354,6 +354,12 @@ namespace HollowDescent.LevelGen
             PlaceRaisedPads(parent, r);
             if (r.Type == RoomType.LevelExit)
                 PlaceLevelExitObject(parent, r);
+
+            // === ENVIRONMENTAL STORYTELLING ===
+            PlaceStoryProps(parent, r);
+            PlaceAtmosphericLighting(parent, r);
+            PlaceFloorDecals(parent, r);
+            PlaceParticleEffects(parent, r);
         }
 
         private void PlaceLevelExitObject(Transform parent, RoomDef r)
@@ -551,6 +557,325 @@ namespace HollowDescent.LevelGen
             }
 
             _roomControllers.Add(rc);
+        }
+
+        // =========================================================
+        // ENVIRONMENTAL STORYTELLING
+        // =========================================================
+
+        /// <summary>
+        /// Part 1 – Prop-based storytelling.
+        /// Combat rooms: tipped table + scattered crates = signs of struggle.
+        /// Safe rooms: neat bench + supply crate = place of rest/refuge.
+        /// </summary>
+        private void PlaceStoryProps(Transform parent, RoomDef r)
+        {
+            var halfW = r.W * 0.5f;
+            var halfD = r.D * 0.5f;
+
+            if (r.Type == RoomType.Combat || r.Type == RoomType.Boss)
+            {
+                // Tipped table (rotated flat cube) – suggests someone was in a hurry / struggle
+                var table = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                table.name = "Prop_TippedTable";
+                table.transform.SetParent(parent);
+                table.transform.position = r.Center + new Vector3(-halfW * 0.5f, 0.25f, halfD * 0.4f);
+                table.transform.localScale = new Vector3(1.8f, 0.12f, 0.9f);
+                table.transform.rotation = Quaternion.Euler(0f, 15f, 52f); // tipped over
+                table.GetComponent<Renderer>().material.color = new Color(0.45f, 0.3f, 0.2f);
+
+                // Scattered crates – debris from the struggle
+                var offsets = new Vector3[]
+                {
+                    new Vector3(-halfW * 0.45f, 0.2f,  halfD * 0.55f),
+                    new Vector3(-halfW * 0.6f,  0.15f, halfD * 0.35f),
+                    new Vector3(-halfW * 0.3f,  0.18f, halfD * 0.65f),
+                };
+                float[] rotations = { 25f, -40f, 10f };
+                for (var i = 0; i < offsets.Length; i++)
+                {
+                    var crate = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    crate.name = "Prop_Crate";
+                    crate.transform.SetParent(parent);
+                    crate.transform.position = r.Center + offsets[i];
+                    crate.transform.localScale = new Vector3(0.55f, 0.55f, 0.55f);
+                    crate.transform.rotation = Quaternion.Euler(0f, rotations[i], 0f);
+                    crate.GetComponent<Renderer>().material.color = new Color(0.4f, 0.28f, 0.18f);
+                }
+
+                // Skeletal remains (thin flat slab on the floor)
+                var remains = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                remains.name = "Prop_Remains";
+                remains.transform.SetParent(parent);
+                remains.transform.position = r.Center + new Vector3(halfW * 0.4f, 0.03f, -halfD * 0.4f);
+                remains.transform.localScale = new Vector3(0.4f, 0.06f, 1.5f);
+                remains.transform.rotation = Quaternion.Euler(0f, 30f, 0f);
+                remains.GetComponent<Renderer>().material.color = new Color(0.85f, 0.82f, 0.75f);
+            }
+            else if (r.Type == RoomType.Safe || r.Type == RoomType.StartSafe)
+            {
+                // Bench – a place of rest
+                var bench = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                bench.name = "Prop_Bench";
+                bench.transform.SetParent(parent);
+                bench.transform.position = r.Center + new Vector3(-halfW * 0.6f, 0.3f, halfD * 0.5f);
+                bench.transform.localScale = new Vector3(2f, 0.2f, 0.5f);
+                bench.GetComponent<Renderer>().material.color = new Color(0.5f, 0.38f, 0.25f);
+
+                // Supply crate – someone prepared for survival here
+                var supply = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                supply.name = "Prop_SupplyCrate";
+                supply.transform.SetParent(parent);
+                supply.transform.position = r.Center + new Vector3(-halfW * 0.6f, 0.35f, halfD * 0.35f);
+                supply.transform.localScale = new Vector3(0.6f, 0.6f, 0.6f);
+                supply.GetComponent<Renderer>().material.color = new Color(0.55f, 0.5f, 0.3f);
+            }
+        }
+
+        /// <summary>
+        /// Part 2 – Light and Atmosphere.
+        /// Combat/Boss: dim red flickering light = danger, horror.
+        /// Safe/Start:  warm golden light = relief, safety.
+        /// </summary>
+        private void PlaceAtmosphericLighting(Transform parent, RoomDef r)
+        {
+            if (r.Type == RoomType.Combat || r.Type == RoomType.Boss)
+            {
+                // Main danger light – red/orange, flickers
+                var dangerLightGo = new GameObject("AtmosLight_Danger");
+                dangerLightGo.transform.SetParent(parent);
+                dangerLightGo.transform.position = r.Center + new Vector3(halfWHelper(r) * 0.3f, wallHeight * 0.7f, 0f);
+                var dangerLight = dangerLightGo.AddComponent<Light>();
+                dangerLight.type = LightType.Point;
+                dangerLight.color = r.Type == RoomType.Boss ? new Color(0.8f, 0.1f, 0.1f) : new Color(1f, 0.35f, 0.1f);
+                dangerLight.intensity = 1.6f;
+                dangerLight.range = Mathf.Max(r.W, r.D) * 0.6f;
+                dangerLightGo.AddComponent<FlickerLight>();
+
+                // Secondary deep shadow light offset to one corner
+                var shadowLightGo = new GameObject("AtmosLight_Shadow");
+                shadowLightGo.transform.SetParent(parent);
+                shadowLightGo.transform.position = r.Center + new Vector3(-halfWHelper(r) * 0.4f, wallHeight * 0.5f, halfDHelper(r) * 0.4f);
+                var shadowLight = shadowLightGo.AddComponent<Light>();
+                shadowLight.type = LightType.Point;
+                shadowLight.color = new Color(0.5f, 0.05f, 0.05f);
+                shadowLight.intensity = 0.5f;
+                shadowLight.range = Mathf.Max(r.W, r.D) * 0.4f;
+                shadowLightGo.AddComponent<FlickerLight>();
+            }
+            else if (r.Type == RoomType.Safe || r.Type == RoomType.StartSafe)
+            {
+                // Warm golden safe light – calm, welcoming
+                var safeLightGo = new GameObject("AtmosLight_Safe");
+                safeLightGo.transform.SetParent(parent);
+                safeLightGo.transform.position = r.Center + new Vector3(0f, wallHeight * 0.75f, 0f);
+                var safeLight = safeLightGo.AddComponent<Light>();
+                safeLight.type = LightType.Point;
+                safeLight.color = new Color(1f, 0.85f, 0.5f);
+                safeLight.intensity = 2.2f;
+                safeLight.range = Mathf.Max(r.W, r.D) * 0.9f;
+                // No flicker – safe rooms are stable
+            }
+        }
+
+        private float halfWHelper(RoomDef r) => r.W * 0.5f;
+        private float halfDHelper(RoomDef r) => r.D * 0.5f;
+
+        /// <summary>
+        /// Part 3 – Decals and Details.
+        /// Flat quads on the floor simulating bloodstains near where enemies spawn.
+        /// Also adds scorch marks near the level exit portal.
+        /// </summary>
+        private void PlaceFloorDecals(Transform parent, RoomDef r)
+        {
+            if (r.Type == RoomType.Combat || r.Type == RoomType.Boss)
+            {
+                // Bloodstain decals near each spawn point quadrant
+                var stainPositions = new Vector3[]
+                {
+                    r.Center + new Vector3( r.W * 0.25f,  0.01f,  r.D * 0.2f),
+                    r.Center + new Vector3(-r.W * 0.3f,   0.01f, -r.D * 0.15f),
+                    r.Center + new Vector3( r.W * 0.1f,   0.01f, -r.D * 0.3f),
+                };
+                float[] stainSizes = { 1.2f, 0.9f, 1.5f };
+                for (var i = 0; i < stainPositions.Length; i++)
+                {
+                    var stain = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                    stain.name = "Decal_Bloodstain";
+                    stain.transform.SetParent(parent);
+                    stain.transform.position = stainPositions[i];
+                    stain.transform.rotation = Quaternion.Euler(90f, Random.Range(0f, 360f), 0f);
+                    stain.transform.localScale = Vector3.one * stainSizes[i];
+                    stain.GetComponent<Renderer>().material.color = new Color(0.45f, 0.05f, 0.05f, 0.9f);
+                    stain.GetComponent<Collider>().enabled = false;
+                }
+
+                // Scuff/footprint trail decals leading toward room center
+                for (var i = 0; i < 3; i++)
+                {
+                    var footprint = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                    footprint.name = "Decal_Scuff";
+                    footprint.transform.SetParent(parent);
+                    footprint.transform.position = r.Center + new Vector3(-r.W * 0.1f * i, 0.01f, r.D * 0.05f * i);
+                    footprint.transform.rotation = Quaternion.Euler(90f, 45f, 0f);
+                    footprint.transform.localScale = new Vector3(0.4f, 0.25f, 1f);
+                    footprint.GetComponent<Renderer>().material.color = new Color(0.25f, 0.2f, 0.18f);
+                    footprint.GetComponent<Collider>().enabled = false;
+                }
+            }
+            else if (r.Type == RoomType.LevelExit)
+            {
+                // Scorch ring around the exit portal
+                var scorch = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                scorch.name = "Decal_ScorchMark";
+                scorch.transform.SetParent(parent);
+                scorch.transform.position = r.Center + new Vector3(0f, 0.01f, 0f);
+                scorch.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
+                scorch.transform.localScale = Vector3.one * 3.5f;
+                scorch.GetComponent<Renderer>().material.color = new Color(0.15f, 0.12f, 0.1f);
+                scorch.GetComponent<Collider>().enabled = false;
+            }
+        }
+
+        /// <summary>
+        /// Particle Effects – floating dust in combat rooms (long abandonment),
+        /// embers/sparks near the level exit portal (magical energy).
+        /// </summary>
+        private void PlaceParticleEffects(Transform parent, RoomDef r)
+        {
+            if (r.Type == RoomType.Combat || r.Type == RoomType.Boss)
+            {
+                // Dust/smoke particles drifting slowly – room has been abandoned a long time
+                var dustGo = new GameObject("Particles_Dust");
+                dustGo.transform.SetParent(parent);
+                dustGo.transform.position = r.Center + new Vector3(0f, 1.2f, 0f);
+
+                var dust = dustGo.AddComponent<ParticleSystem>();
+
+                // Main module
+                var main = dust.main;
+                main.loop = true;
+                main.startLifetime = new ParticleSystem.MinMaxCurve(3f, 6f);
+                main.startSpeed = new ParticleSystem.MinMaxCurve(0.05f, 0.2f);
+                main.startSize = new ParticleSystem.MinMaxCurve(0.04f, 0.12f);
+                main.startColor = new ParticleSystem.MinMaxGradient(
+                    new Color(0.6f, 0.55f, 0.5f, 0.25f),
+                    new Color(0.4f, 0.38f, 0.35f, 0.15f)
+                );
+                main.maxParticles = 60;
+                main.simulationSpace = ParticleSystemSimulationSpace.World;
+
+                // Emission – slow constant drizzle
+                var emission = dust.emission;
+                emission.rateOverTime = 8f;
+
+                // Shape – spread across floor area so dust fills the room
+                var shape = dust.shape;
+                shape.enabled = true;
+                shape.shapeType = ParticleSystemShapeType.Box;
+                shape.scale = new Vector3(r.W * 0.7f, 0.1f, r.D * 0.7f);
+
+                // Velocity over lifetime – slow upward drift
+                var vel = dust.velocityOverLifetime;
+                vel.enabled = true;
+                vel.space = ParticleSystemSimulationSpace.World;
+                vel.y = new ParticleSystem.MinMaxCurve(0.03f, 0.12f);
+                vel.x = new ParticleSystem.MinMaxCurve(-0.05f, 0.05f);
+                vel.z = new ParticleSystem.MinMaxCurve(-0.05f, 0.05f);
+
+                // Fade out smoothly at end of life
+                var col = dust.colorOverLifetime;
+                col.enabled = true;
+                var grad = new Gradient();
+                grad.SetKeys(
+                    new GradientColorKey[] {
+                        new GradientColorKey(new Color(0.55f, 0.5f, 0.45f), 0f),
+                        new GradientColorKey(new Color(0.55f, 0.5f, 0.45f), 0.7f),
+                        new GradientColorKey(new Color(0.3f, 0.28f, 0.25f), 1f)
+                    },
+                    new GradientAlphaKey[] {
+                        new GradientAlphaKey(0f, 0f),
+                        new GradientAlphaKey(0.3f, 0.2f),
+                        new GradientAlphaKey(0f, 1f)
+                    }
+                );
+                col.color = new ParticleSystem.MinMaxGradient(grad);
+
+                // Size shrinks as it rises
+                var size = dust.sizeOverLifetime;
+                size.enabled = true;
+                var sizeCurve = new AnimationCurve();
+                sizeCurve.AddKey(0f, 0.3f);
+                sizeCurve.AddKey(0.5f, 1f);
+                sizeCurve.AddKey(1f, 0.1f);
+                size.size = new ParticleSystem.MinMaxCurve(1f, sizeCurve);
+            }
+
+            if (r.Type == RoomType.LevelExit)
+            {
+                // Ember/spark particles swirling around the portal – magical energy
+                var emberGo = new GameObject("Particles_Embers");
+                emberGo.transform.SetParent(parent);
+                emberGo.transform.position = r.Center + new Vector3(0f, 0.5f, 0f);
+
+                var embers = emberGo.AddComponent<ParticleSystem>();
+
+                var main = embers.main;
+                main.loop = true;
+                main.startLifetime = new ParticleSystem.MinMaxCurve(1.5f, 3f);
+                main.startSpeed = new ParticleSystem.MinMaxCurve(0.8f, 2f);
+                main.startSize = new ParticleSystem.MinMaxCurve(0.05f, 0.15f);
+                main.startColor = new ParticleSystem.MinMaxGradient(
+                    new Color(1f, 0.6f, 0.1f, 0.9f),
+                    new Color(0.2f, 0.5f, 1f, 0.9f)
+                );
+                main.maxParticles = 80;
+                main.simulationSpace = ParticleSystemSimulationSpace.World;
+
+                // Emission – frequent bursts
+                var emission = embers.emission;
+                emission.rateOverTime = 20f;
+
+                // Shape – cone shooting upward from portal base
+                var shape = embers.shape;
+                shape.enabled = true;
+                shape.shapeType = ParticleSystemShapeType.Cone;
+                shape.angle = 35f;
+                shape.radius = 1.2f;
+
+                // Velocity – swirl upward
+                var vel = embers.velocityOverLifetime;
+                vel.enabled = true;
+                vel.space = ParticleSystemSimulationSpace.World;
+                vel.y = new ParticleSystem.MinMaxCurve(0.5f, 1.5f);
+                vel.orbitalY = new ParticleSystem.MinMaxCurve(2f, 4f);
+
+                // Color fades from bright orange/blue to transparent
+                var col = embers.colorOverLifetime;
+                col.enabled = true;
+                var grad = new Gradient();
+                grad.SetKeys(
+                    new GradientColorKey[] {
+                        new GradientColorKey(new Color(1f, 0.8f, 0.3f), 0f),
+                        new GradientColorKey(new Color(0.4f, 0.6f, 1f), 0.5f),
+                        new GradientColorKey(new Color(0.2f, 0.2f, 0.8f), 1f)
+                    },
+                    new GradientAlphaKey[] {
+                        new GradientAlphaKey(1f, 0f),
+                        new GradientAlphaKey(0.7f, 0.5f),
+                        new GradientAlphaKey(0f, 1f)
+                    }
+                );
+                col.color = new ParticleSystem.MinMaxGradient(grad);
+
+                // Particles shrink as they die
+                var size = embers.sizeOverLifetime;
+                size.enabled = true;
+                var sizeCurve = new AnimationCurve();
+                sizeCurve.AddKey(0f, 1f);
+                sizeCurve.AddKey(1f, 0f);
+                size.size = new ParticleSystem.MinMaxCurve(1f, sizeCurve);
+            }
         }
 
         private void OnDrawGizmos()
