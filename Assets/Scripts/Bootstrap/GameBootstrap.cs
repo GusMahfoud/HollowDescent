@@ -102,6 +102,8 @@ namespace HollowDescent.Bootstrap
             rb.useGravity = false;
             rb.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY;
             rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+            if (player.GetComponent<PlayerHitFlash>() == null)
+                player.AddComponent<PlayerHitFlash>();
         }
 
         private void EnsureCamera()

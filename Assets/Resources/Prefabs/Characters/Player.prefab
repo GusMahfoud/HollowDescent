@@ -177,4 +177,4 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HollowDescent.Gameplay.PlayerHealth
   maxHealth: 5
-  invincible: 1
+  invincible: 0

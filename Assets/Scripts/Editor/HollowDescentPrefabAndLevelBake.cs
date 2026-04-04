@@ -94,6 +94,7 @@ namespace HollowDescent.EditorTools
             rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
             go.AddComponent<PlayerControllerTopDown>();
             go.AddComponent<PlayerHealth>();
+            go.AddComponent<PlayerHitFlash>();
             go.transform.position = Vector3.zero;
 
             PersistLitMaterialsForHierarchy(go);
