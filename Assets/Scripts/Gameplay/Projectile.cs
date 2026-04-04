@@ -5,7 +5,7 @@ using HollowDescent.AI;
 namespace HollowDescent.Gameplay
 {
     /// <summary>
-    /// Moves forward; damages EnemyBase on overlap or sweep, then destroys. Walls block after enemies along the ray.
+    /// Kinematic rigidbody moved in FixedUpdate so physics queries see the bullet; damages EnemyBase on overlap or sweep.
     /// </summary>
     public class Projectile : MonoBehaviour
     {
@@ -13,10 +13,11 @@ namespace HollowDescent.Gameplay
         private float _speed;
         private float _lifetime;
         private float _spawnTime;
-        private Vector3 _prevPosition;
         private float _hitRadius = 0.35f;
         private Collider _myCollider;
-        private static readonly Collider[] OverlapBuffer = new Collider[32];
+        private Rigidbody _rb;
+        private readonly Collider[] _overlapScratch = new Collider[32];
+        private const int CastMask = ~0;
 
         public void Init(Vector3 direction, float speed, float lifetime, float hitRadius)
         {
@@ -25,42 +26,45 @@ namespace HollowDescent.Gameplay
             _lifetime = lifetime;
             _hitRadius = Mathf.Clamp(hitRadius, 0.06f, 3f);
             _spawnTime = Time.time;
-            _prevPosition = transform.position;
             _myCollider = GetComponent<Collider>();
+            _rb = GetComponent<Rigidbody>();
+        }
+
+        private void FixedUpdate()
+        {
+            var pos = _rb != null ? _rb.position : transform.position;
+            var step = _direction * (_speed * Time.fixedDeltaTime);
+            var nextPos = pos + step;
+
+            if (TryDamageEnemyAtPosition(pos) || TryDamageEnemyAtPosition(nextPos))
+                return;
+
+            if (ProcessSegmentHits(pos, nextPos))
+                return;
+
+            if (_rb != null)
+                _rb.MovePosition(nextPos);
+            else
+                transform.position = nextPos;
+
+            var after = _rb != null ? _rb.position : transform.position;
+            if (TryDamageEnemyAtPosition(after))
+                return;
         }
 
         private void Update()
         {
-            _prevPosition = transform.position;
-            var step = _direction * (_speed * Time.deltaTime);
-            var nextPos = _prevPosition + step;
-
-            if (TryDamageEnemyAtPosition(_prevPosition) || TryDamageEnemyAtPosition(nextPos))
-                return;
-
-            if (ProcessSegmentHits(_prevPosition, nextPos))
-                return;
-
-            transform.position = nextPos;
-
             if (Time.time - _spawnTime >= _lifetime)
-            {
                 Destroy(gameObject);
-                return;
-            }
-
-            if (TryDamageEnemyAtPosition(transform.position))
-                return;
         }
 
-        /// <summary>Overlap sometimes catches kinematic bullets tunneling a thin collider.</summary>
         private bool TryDamageEnemyAtPosition(Vector3 position)
         {
-            var r = Mathf.Max(0.08f, _hitRadius);
-            var count = Physics.OverlapSphereNonAlloc(position, r, OverlapBuffer, ~0, QueryTriggerInteraction.Collide);
+            var r = Mathf.Max(0.28f, _hitRadius * 2.25f);
+            var count = Physics.OverlapSphereNonAlloc(position, r, _overlapScratch, CastMask, QueryTriggerInteraction.Collide);
             for (var i = 0; i < count; i++)
             {
-                var c = OverlapBuffer[i];
+                var c = _overlapScratch[i];
                 if (c == null || c.transform == transform) continue;
                 if (IsMyCollider(c)) continue;
                 if (c.CompareTag("Player")) continue;
@@ -80,9 +84,6 @@ namespace HollowDescent.Gameplay
             return _myCollider != null && c == _myCollider;
         }
 
-        /// <summary>
-        /// SphereCast along the step; closest hit wins — enemy applies damage, anything else blocks the shot.
-        /// </summary>
         private bool ProcessSegmentHits(Vector3 from, Vector3 to)
         {
             var seg = to - from;
@@ -90,14 +91,13 @@ namespace HollowDescent.Gameplay
             if (dist < 1e-5f)
                 return false;
             var dir = seg / dist;
-            var castRadius = Mathf.Max(0.06f, _hitRadius * 0.55f);
+            var castRadius = Mathf.Max(0.1f, _hitRadius * 0.75f);
 
-            // Pull start forward slightly so casts don't start "inside" overlapping hulls/floor in odd ways
-            var skin = Mathf.Min(0.06f, dist * 0.25f);
+            var skin = Mathf.Min(0.1f, dist * 0.35f);
             var castFrom = from + dir * skin;
             var castDist = Mathf.Max(0f, dist - skin);
 
-            var hits = Physics.SphereCastAll(castFrom, castRadius, dir, castDist, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+            var hits = Physics.SphereCastAll(castFrom, castRadius, dir, castDist, CastMask, QueryTriggerInteraction.Collide);
             if (hits == null || hits.Length == 0)
                 return false;
 
@@ -116,6 +116,9 @@ namespace HollowDescent.Gameplay
                     Destroy(gameObject);
                     return true;
                 }
+
+                if (h.collider.isTrigger)
+                    continue;
 
                 Destroy(gameObject);
                 return true;

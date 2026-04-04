@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using UnityEngine;
 using HollowDescent.Gameplay;
 
@@ -19,7 +20,8 @@ namespace HollowDescent.AI
 
         protected int CurrentHealth;
         public event Action<EnemyBase> OnDeath;
-        private float _hitStunUntilUnscaledTime;
+        private Coroutine _stunCoroutine;
+        private bool _movementLocked;
 
         protected virtual void Awake()
         {
@@ -30,6 +32,16 @@ namespace HollowDescent.AI
                 rb.useGravity = false;
                 rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
             }
+        }
+
+        private void OnDisable()
+        {
+            if (_stunCoroutine != null)
+            {
+                StopCoroutine(_stunCoroutine);
+                _stunCoroutine = null;
+            }
+            _movementLocked = false;
         }
 
         public virtual void TakeDamage(int amount)
@@ -53,7 +65,8 @@ namespace HollowDescent.AI
             Destroy(gameObject);
         }
 
-        protected bool IsHitStunned => Time.unscaledTime < _hitStunUntilUnscaledTime;
+        /// <summary>Only this instance pauses pursuit after it lands a hit on the player.</summary>
+        protected bool IsHitStunned => _movementLocked;
 
         /// <summary>
         /// Brief knockback away from the player, then hold still for <see cref="playerHitStunSeconds"/>.
@@ -72,7 +85,17 @@ namespace HollowDescent.AI
             else
                 transform.position += away * playerHitKnockbackDistance;
 
-            _hitStunUntilUnscaledTime = Time.unscaledTime + playerHitStunSeconds;
+            if (_stunCoroutine != null)
+                StopCoroutine(_stunCoroutine);
+            _stunCoroutine = StartCoroutine(HitStunRoutine());
+        }
+
+        private IEnumerator HitStunRoutine()
+        {
+            _movementLocked = true;
+            yield return new WaitForSeconds(playerHitStunSeconds);
+            _movementLocked = false;
+            _stunCoroutine = null;
         }
 
         protected void DealContactDamage(Collider other)

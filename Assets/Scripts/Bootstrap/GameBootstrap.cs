@@ -260,7 +260,7 @@ namespace HollowDescent.Bootstrap
                     npc.transform.position = roomCenter + new Vector3(-2.2f, 1f, 0.8f);
                     npc.transform.localScale = new Vector3(1.2f, 1.25f, 1.2f);
                     var npcRenderer = npc.GetComponent<Renderer>();
-                    if (npcRenderer != null) npcRenderer.material.color = new Color(0.75f, 0.75f, 0.85f);
+                    if (npcRenderer != null) GrayboxTintUtil.Apply(npcRenderer, new Color(0.75f, 0.75f, 0.85f));
                     if (NavMesh.SamplePosition(npc.transform.position, out _, 2f, NavMesh.AllAreas))
                     {
                         var npcAgent = npc.AddComponent<NavMeshAgent>();

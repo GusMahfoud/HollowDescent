@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.AI;
@@ -109,7 +110,7 @@ namespace HollowDescent.EditorTools
             npc.name = "NarrativeWitnessNPC";
             npc.transform.localScale = new Vector3(1.2f, 1.25f, 1.2f);
             var npcRenderer = npc.GetComponent<Renderer>();
-            if (npcRenderer != null) npcRenderer.material.color = new Color(0.75f, 0.75f, 0.85f);
+            if (npcRenderer != null) GrayboxTintUtil.Apply(npcRenderer, new Color(0.75f, 0.75f, 0.85f));
             var col = npc.GetComponent<Collider>();
             if (col != null) col.isTrigger = false;
             var agent = npc.AddComponent<NavMeshAgent>();
@@ -191,9 +192,11 @@ namespace HollowDescent.EditorTools
             }
 
             EnsureBakedMaterialsFolder();
+            var toDestroy = new HashSet<Material>();
             foreach (var r in root.GetComponentsInChildren<Renderer>(true))
             {
-                var oldMats = r.materials;
+                var oldMats = r.sharedMaterials;
+                if (oldMats == null || oldMats.Length == 0) continue;
                 var repl = new Material[oldMats.Length];
                 for (var i = 0; i < oldMats.Length; i++)
                 {
@@ -210,8 +213,12 @@ namespace HollowDescent.EditorTools
 
                 r.sharedMaterials = repl;
                 foreach (var m in oldMats)
-                    if (m != null) Object.DestroyImmediate(m);
+                    if (m != null && !EditorUtility.IsPersistent(m))
+                        toDestroy.Add(m);
             }
+
+            foreach (var m in toDestroy)
+                Object.DestroyImmediate(m);
 
             AssetDatabase.SaveAssets();
         }

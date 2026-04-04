@@ -73,8 +73,8 @@ namespace HollowDescent.LevelGen
                 chunk.transform.localScale = new Vector3(s, s * Random.Range(0.4f, 0.9f), s);
                 chunk.transform.rotation = Quaternion.Euler(
                     Random.Range(-30f, 30f), Random.Range(0f, 360f), Random.Range(-20f, 20f));
-                chunk.GetComponent<Renderer>().material.color =
-                    new Color(Random.Range(0.35f, 0.5f), Random.Range(0.32f, 0.45f), Random.Range(0.3f, 0.42f));
+                GrayboxTintUtil.Apply(chunk.GetComponent<Renderer>(),
+                    new Color(Random.Range(0.35f, 0.5f), Random.Range(0.32f, 0.45f), Random.Range(0.3f, 0.42f)));
             }
         }
 
@@ -164,7 +164,7 @@ namespace HollowDescent.LevelGen
                     Random.Range(-15f, 15f), Random.Range(30f, 60f), Random.Range(-15f, 15f));
                 var s = Random.Range(1.2f, 2.2f);
                 web.transform.localScale = new Vector3(s, s, 1f);
-                web.GetComponent<Renderer>().material.color = new Color(0.92f, 0.92f, 0.88f, 0.55f);
+                GrayboxTintUtil.Apply(web.GetComponent<Renderer>(), new Color(0.92f, 0.92f, 0.88f, 0.55f));
                 web.GetComponent<Collider>().enabled = false;
             }
         }
@@ -183,8 +183,8 @@ namespace HollowDescent.LevelGen
                 pool.transform.rotation = Quaternion.Euler(90f, Random.Range(0f, 360f), 0f);
                 var s = Random.Range(1.5f, 3f);
                 pool.transform.localScale = new Vector3(s, s * Random.Range(0.5f, 1f), 1f);
-                pool.GetComponent<Renderer>().material.color =
-                    new Color(Random.Range(0.35f, 0.5f), 0.03f, 0.03f, 0.85f);
+                GrayboxTintUtil.Apply(pool.GetComponent<Renderer>(),
+                    new Color(Random.Range(0.35f, 0.5f), 0.03f, 0.03f, 0.85f));
                 pool.GetComponent<Collider>().enabled = false;
             }
         }
@@ -218,8 +218,8 @@ namespace HollowDescent.LevelGen
                 puddle.transform.rotation = Quaternion.Euler(90f, Random.Range(0f, 360f), 0f);
                 var s = Random.Range(0.8f, 2f);
                 puddle.transform.localScale = new Vector3(s, s * Random.Range(0.6f, 1f), 1f);
-                puddle.GetComponent<Renderer>().material.color =
-                    new Color(0.5f, Random.Range(0.75f, 0.9f), 0.05f, 0.8f);
+                GrayboxTintUtil.Apply(puddle.GetComponent<Renderer>(),
+                    new Color(0.5f, Random.Range(0.75f, 0.9f), 0.05f, 0.8f));
                 puddle.GetComponent<Collider>().enabled = false;
 
                 // Small glow light above each puddle
@@ -250,8 +250,7 @@ namespace HollowDescent.LevelGen
                     Random.Range(0.1f, 0.22f), h * 0.5f, Random.Range(0.1f, 0.22f));
                 spike.transform.rotation = Quaternion.Euler(
                     Random.Range(-8f, 8f), Random.Range(0f, 360f), Random.Range(-8f, 8f));
-                spike.GetComponent<Renderer>().material.color =
-                    new Color(0.25f, 0.22f, 0.2f);
+                GrayboxTintUtil.Apply(spike.GetComponent<Renderer>(), new Color(0.25f, 0.22f, 0.2f));
             }
         }
 
@@ -267,7 +266,7 @@ namespace HollowDescent.LevelGen
                 Random.Range(-_roomW * 0.2f, _roomW * 0.2f), 0.2f,
                 Random.Range(-_roomD * 0.2f, _roomD * 0.2f));
             base_.transform.localScale = new Vector3(1.8f, 0.4f, 1f);
-            base_.GetComponent<Renderer>().material.color = new Color(0.18f, 0.1f, 0.22f);
+            GrayboxTintUtil.Apply(base_.GetComponent<Renderer>(), new Color(0.18f, 0.1f, 0.22f));
 
             // Top offering cube
             var top = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -276,7 +275,7 @@ namespace HollowDescent.LevelGen
             top.transform.position = base_.transform.position + Vector3.up * 0.45f;
             top.transform.localScale = Vector3.one * 0.35f;
             top.transform.rotation = Quaternion.Euler(0f, 45f, 0f);
-            top.GetComponent<Renderer>().material.color = new Color(0.55f, 0.1f, 0.75f);
+            GrayboxTintUtil.Apply(top.GetComponent<Renderer>(), new Color(0.55f, 0.1f, 0.75f));
 
             // Purple glow + flicker
             var lightGo = new GameObject("AltarGlow");

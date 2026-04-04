@@ -264,13 +264,13 @@ namespace HollowDescent.LevelGen
         {
             if (eb == null || !eb.gameObject.name.StartsWith("Enemy_", StringComparison.Ordinal)) return;
             var r = eb.GetComponent<Renderer>();
-            if (r?.material == null) return;
+            if (r == null) return;
             if (flanker)
-                r.material.color = new Color(0.5f + (float)rng.NextDouble() * 0.25f, 0.1f, 0.5f + (float)rng.NextDouble() * 0.22f);
+                GrayboxTintUtil.Apply(r, new Color(0.5f + (float)rng.NextDouble() * 0.25f, 0.1f, 0.5f + (float)rng.NextDouble() * 0.22f));
             else if (shooter)
-                r.material.color = new Color(0.78f + (float)rng.NextDouble() * 0.15f, 0.32f + (float)rng.NextDouble() * 0.18f, 0.06f);
+                GrayboxTintUtil.Apply(r, new Color(0.78f + (float)rng.NextDouble() * 0.15f, 0.32f + (float)rng.NextDouble() * 0.18f, 0.06f));
             else
-                r.material.color = new Color(0.85f + (float)rng.NextDouble() * 0.1f, 0.1f + (float)rng.NextDouble() * 0.18f, 0.1f + (float)rng.NextDouble() * 0.18f);
+                GrayboxTintUtil.Apply(r, new Color(0.85f + (float)rng.NextDouble() * 0.1f, 0.1f + (float)rng.NextDouble() * 0.18f, 0.1f + (float)rng.NextDouble() * 0.18f));
         }
 
         private GameObject CreateChaserPrimitive(Vector3 pos)
@@ -285,8 +285,7 @@ namespace HollowDescent.LevelGen
             rb.useGravity = false;
             rb.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY;
             rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
-            var mat = go.GetComponent<Renderer>().material;
-            if (mat != null) mat.color = new Color(0.9f, 0.2f, 0.2f);
+            GrayboxTintUtil.Apply(go.GetComponent<Renderer>(), new Color(0.9f, 0.2f, 0.2f));
             var chaser = go.AddComponent<EnemyChaser>();
             chaser.SetPlayer(GameObject.FindGameObjectWithTag("Player")?.transform);
             return go;
@@ -303,8 +302,7 @@ namespace HollowDescent.LevelGen
             var rb = go.AddComponent<Rigidbody>();
             rb.useGravity = false;
             rb.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY;
-            var mat = go.GetComponent<Renderer>().material;
-            if (mat != null) mat.color = new Color(0.8f, 0.4f, 0.1f);
+            GrayboxTintUtil.Apply(go.GetComponent<Renderer>(), new Color(0.8f, 0.4f, 0.1f));
             var shooter = go.AddComponent<EnemyShooter>();
             shooter.SetPlayer(GameObject.FindGameObjectWithTag("Player")?.transform);
             return go;
@@ -321,8 +319,7 @@ namespace HollowDescent.LevelGen
             var rb = go.AddComponent<Rigidbody>();
             rb.useGravity = false;
             rb.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY;
-            var mat = go.GetComponent<Renderer>().material;
-            if (mat != null) mat.color = new Color(0.6f, 0.2f, 0.6f);
+            GrayboxTintUtil.Apply(go.GetComponent<Renderer>(), new Color(0.6f, 0.2f, 0.6f));
             var flanker = go.AddComponent<EnemyFlanker>();
             flanker.SetPlayer(GameObject.FindGameObjectWithTag("Player")?.transform);
             return go;
@@ -361,7 +358,7 @@ namespace HollowDescent.LevelGen
             _rewardMarker.transform.localScale = new Vector3(0.8f, 0.8f, 0.8f);
             _rewardMarker.GetComponent<Collider>().enabled = false;
             var r = _rewardMarker.GetComponent<Renderer>();
-            if (r != null) r.material.color = new Color(1f, 0.9f, 0.2f);
+            if (r != null) GrayboxTintUtil.Apply(r, new Color(1f, 0.9f, 0.2f));
         }
 
         private void OnDrawGizmos()

@@ -15,6 +15,7 @@ GameObject:
   - component: {fileID: 6038393035999908338}
   - component: {fileID: 3284809236931062403}
   - component: {fileID: 6682056356130393278}
+  - component: {fileID: 1041598176089988422}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -93,7 +94,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  - {fileID: 2100000, guid: 914477632b3875544b96fd993ca4203c, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -178,3 +179,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::HollowDescent.Gameplay.PlayerHealth
   maxHealth: 5
   invincible: 0
+  hitInvulnerabilitySeconds: 1
+--- !u!114 &1041598176089988422
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4695006013811152432}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b58e4ab11bd3dc9408d1e8f48572497d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HollowDescent.Gameplay.PlayerHitFlash
+  flashColor: {r: 1, g: 0.25, b: 0.2, a: 1}
+  flashDuration: 0.22
+  peakNormalized: 0.35
