@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.Rendering.Universal;
 using HollowDescent.LevelGen;
 using HollowDescent.Gameplay;
 using HollowDescent.AI;
@@ -11,13 +12,18 @@ using UnityEditor;
 namespace HollowDescent.Bootstrap
 {
     /// <summary>
-    /// Bootstraps the graybox level: Player, Camera, FloorGenerator, GameManager.
-    /// Attach to empty GameObject in empty scene; press Play.
+    /// Bootstraps the game: managers, Player (prefab/Resources), Camera, baked or procedural level, narrative NPC.
     /// </summary>
+    [DefaultExecutionOrder(-100)]
     public class GameBootstrap : MonoBehaviour
     {
-        [Header("Optional: leave null to auto-create")]
+        private const string PlayerResourcePath = "Prefabs/Characters/Player";
+        private const string WitnessResourcePath = "Prefabs/Characters/NarrativeWitnessNPC";
+        private const string Level1ResourcePath = "Prefabs/Levels/Level_01";
+
+        [Header("Optional: leave null to use Resources path or runtime fallback")]
         [SerializeField] private GameObject playerPrefabOrNull;
+        [SerializeField] private GameObject witnessNpcPrefabOrNull;
         [SerializeField] private Camera mainCameraOrNull;
         [SerializeField] private FloorGenerator floorGeneratorOrNull;
         [SerializeField] private GameManager gameManagerOrNull;
@@ -59,13 +65,23 @@ namespace HollowDescent.Bootstrap
 
         private void EnsurePlayer()
         {
-            if (playerPrefabOrNull != null)
+            var existing = GameObject.FindGameObjectWithTag("Player");
+            if (existing != null)
             {
-                _player = Instantiate(playerPrefabOrNull);
+                _player = existing;
+                ConfigurePlayerPhysics(_player);
+                return;
+            }
+
+            var prefab = playerPrefabOrNull != null ? playerPrefabOrNull : Resources.Load<GameObject>(PlayerResourcePath);
+            if (prefab != null)
+            {
+                _player = Instantiate(prefab);
                 _player.name = "Player";
                 ConfigurePlayerPhysics(_player);
                 return;
             }
+
             _player = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             _player.name = "Player";
             _player.transform.position = new Vector3(0f, 1f, 0f);
@@ -86,6 +102,8 @@ namespace HollowDescent.Bootstrap
             rb.useGravity = false;
             rb.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY;
             rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+            if (player.GetComponent<PlayerHitFlash>() == null)
+                player.AddComponent<PlayerHitFlash>();
         }
 
         private void EnsureCamera()
@@ -93,14 +111,33 @@ namespace HollowDescent.Bootstrap
             if (mainCameraOrNull != null)
             {
                 _camera = mainCameraOrNull;
+                EnsureUrpCameraData(_camera.gameObject);
                 EnsureSingleAudioListener(_camera);
                 var follow = _camera.GetComponent<TopDownCameraFollow>();
                 if (follow == null) follow = _camera.gameObject.AddComponent<TopDownCameraFollow>();
                 if (_player != null) follow.SetTarget(_player.transform);
                 return;
             }
+
+            var existingGo = GameObject.FindGameObjectWithTag("MainCamera");
+            if (existingGo != null)
+            {
+                var existingCam = existingGo.GetComponent<Camera>();
+                if (existingCam != null)
+                {
+                    _camera = existingCam;
+                    EnsureUrpCameraData(_camera.gameObject);
+                    EnsureSingleAudioListener(_camera);
+                    var follow = _camera.GetComponent<TopDownCameraFollow>();
+                    if (follow == null) follow = _camera.gameObject.AddComponent<TopDownCameraFollow>();
+                    if (_player != null) follow.SetTarget(_player.transform);
+                    return;
+                }
+            }
+
             var camGo = new GameObject("Main Camera");
             _camera = camGo.AddComponent<Camera>();
+            EnsureUrpCameraData(camGo);
             _camera.orthographic = false;
             _camera.transform.position = new Vector3(0f, 18f, -8f);
             _camera.transform.rotation = Quaternion.Euler(70f, 0f, 0f);
@@ -110,6 +147,13 @@ namespace HollowDescent.Bootstrap
             EnsureSingleAudioListener(_camera);
             var tdFollow = camGo.AddComponent<TopDownCameraFollow>();
             if (_player != null) tdFollow.SetTarget(_player.transform);
+        }
+
+        private static void EnsureUrpCameraData(GameObject cameraObject)
+        {
+            if (cameraObject == null) return;
+            if (cameraObject.GetComponent<UniversalAdditionalCameraData>() == null)
+                cameraObject.AddComponent<UniversalAdditionalCameraData>();
         }
 
         private static void EnsureSingleAudioListener(Camera targetCamera)
@@ -129,23 +173,51 @@ namespace HollowDescent.Bootstrap
                     listener.enabled = true;
                     continue;
                 }
-                Destroy(listener);
+                Object.Destroy(listener);
             }
         }
 
         private void EnsureFloor()
         {
+            var follow = FindFirstObjectByType<TopDownCameraFollow>();
+
             if (floorGeneratorOrNull != null)
             {
                 _floorGen = floorGeneratorOrNull;
+                LevelManager.Instance?.RegisterFloorGenerator(_floorGen);
                 if (!_floorGen.HasGenerated()) _floorGen.Generate();
+                if (follow != null && _player != null) follow.SetTarget(_player.transform);
+                LevelManager.Instance?.PlacePlayerAtLevelStart();
                 return;
             }
+
+            var existingRoot = GameObject.Find("LevelRoot");
+            if (existingRoot != null)
+            {
+                LevelManager.Instance?.RegisterLevelRoot(existingRoot);
+                LevelManager.Instance?.PlacePlayerAtLevelStart(existingRoot);
+                if (follow != null && _player != null) follow.SetTarget(_player.transform);
+                return;
+            }
+
+            var baked = Resources.Load<GameObject>(Level1ResourcePath);
+            if (baked != null)
+            {
+                var levelParent = GameObject.Find("Level") ?? new GameObject("Level");
+                var root = Instantiate(baked, levelParent.transform);
+                root.name = "LevelRoot";
+                LevelManager.Instance?.RegisterLevelRoot(root);
+                LevelManager.Instance?.PlacePlayerAtLevelStart(root);
+                if (follow != null && _player != null) follow.SetTarget(_player.transform);
+                return;
+            }
+
             var levelGo = new GameObject("Level");
             _floorGen = levelGo.AddComponent<FloorGenerator>();
+            LevelManager.Instance?.RegisterFloorGenerator(_floorGen);
             _floorGen.Generate();
-            var follow = FindFirstObjectByType<TopDownCameraFollow>();
             if (follow != null && _player != null) follow.SetTarget(_player.transform);
+            LevelManager.Instance?.PlacePlayerAtLevelStart();
         }
 
         private void EnsureNarrativeTrigger()
@@ -160,29 +232,56 @@ namespace HollowDescent.Bootstrap
                 Debug.LogWarning("[Narrative] Could not find Level 1 final room objects (Room_To Level 2 / RoomGeometry_To Level 2).");
                 return;
             }
+
             var roomCenter = roomGeometry.position;
             var triggerCollider = roomTrigger.GetComponent<BoxCollider>();
             if (triggerCollider != null)
                 roomCenter = triggerCollider.bounds.center;
 
-            var npc = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            npc.name = "NarrativeWitnessNPC";
-            npc.transform.SetParent(roomGeometry);
-            npc.transform.position = roomCenter + new Vector3(-2.2f, 1f, 0.8f);
-            npc.transform.localScale = new Vector3(1.2f, 1.25f, 1.2f);
-            var npcRenderer = npc.GetComponent<Renderer>();
-            if (npcRenderer != null) npcRenderer.material.color = new Color(0.75f, 0.75f, 0.85f);
-            Debug.Log($"[Narrative] Spawned NPC in final Level 1 room at {npc.transform.position}");
+            var npcReact = roomGeometry.GetComponentInChildren<NPCNavReact>(true);
+            GameObject npc;
 
-            if (NavMesh.SamplePosition(npc.transform.position, out _, 2f, NavMesh.AllAreas))
+            if (npcReact != null)
             {
-                var npcAgent = npc.AddComponent<NavMeshAgent>();
-                npcAgent.speed = 3.2f;
-                npcAgent.angularSpeed = 720f;
-                npcAgent.acceleration = 14f;
-                npcAgent.stoppingDistance = 0.6f;
+                npc = npcReact.gameObject;
+                Debug.Log($"[Narrative] Using existing witness NPC at {npc.transform.position}");
             }
-            var npcReact = npc.AddComponent<NPCNavReact>();
+            else
+            {
+                var witnessPrefab = witnessNpcPrefabOrNull != null
+                    ? witnessNpcPrefabOrNull
+                    : Resources.Load<GameObject>(WitnessResourcePath);
+
+                if (witnessPrefab == null)
+                {
+                    npc = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+                    npc.name = "NarrativeWitnessNPC";
+                    npc.transform.SetParent(roomGeometry);
+                    npc.transform.position = roomCenter + new Vector3(-2.2f, 1f, 0.8f);
+                    npc.transform.localScale = new Vector3(1.2f, 1.25f, 1.2f);
+                    var npcRenderer = npc.GetComponent<Renderer>();
+                    if (npcRenderer != null) GrayboxTintUtil.Apply(npcRenderer, new Color(0.75f, 0.75f, 0.85f));
+                    if (NavMesh.SamplePosition(npc.transform.position, out _, 2f, NavMesh.AllAreas))
+                    {
+                        var npcAgent = npc.AddComponent<NavMeshAgent>();
+                        npcAgent.speed = 3.2f;
+                        npcAgent.angularSpeed = 720f;
+                        npcAgent.acceleration = 14f;
+                        npcAgent.stoppingDistance = 0.6f;
+                    }
+                    npcReact = npc.AddComponent<NPCNavReact>();
+                }
+                else
+                {
+                    npc = Instantiate(witnessPrefab, roomGeometry);
+                    npc.name = "NarrativeWitnessNPC";
+                    npc.transform.position = roomCenter + new Vector3(-2.2f, 1f, 0.8f);
+                    npc.transform.rotation = Quaternion.identity;
+                    npcReact = npc.GetComponent<NPCNavReact>();
+                    if (npcReact == null) npcReact = npc.AddComponent<NPCNavReact>();
+                    Debug.Log($"[Narrative] Spawned witness prefab in final Level 1 room at {npc.transform.position}");
+                }
+            }
 
             var narrativeEvent = roomTrigger.GetComponent<NarrativeTriggerEvent>();
             if (narrativeEvent == null)

@@ -4,13 +4,18 @@ using HollowDescent.LevelGen;
 namespace HollowDescent.Bootstrap
 {
     /// <summary>
-    /// Handles level transitions: LoadLevel(n) clears current floor and generates level n, repositions player.
+    /// Level transitions: baked level prefabs (Resources) or procedural FloorGenerator fallback.
     /// </summary>
     public class LevelManager : MonoBehaviour
     {
         public static LevelManager Instance { get; private set; }
 
+        private const string BakedLevelResourceFormat = "Prefabs/Levels/Level_{0:00}";
+
         [SerializeField] private int currentLevel = 1;
+        [Tooltip("Optional override per index [0]=Level 1. If empty, loads Resources path Prefabs/Levels/Level_01 etc.")]
+        [SerializeField] private GameObject[] levelPrefabOverrides;
+
         private FloorGenerator _floorGenerator;
         private GameObject _levelRoot;
         private Transform _player;
@@ -29,13 +34,8 @@ namespace HollowDescent.Bootstrap
 
         private void Start()
         {
-            _player = GameObject.FindGameObjectWithTag("Player")?.transform;
-            var levelGo = GameObject.Find("Level");
-            if (levelGo != null)
-            {
-                _floorGenerator = levelGo.GetComponent<FloorGenerator>();
-                _levelRoot = levelGo.transform.Find("LevelRoot")?.gameObject;
-            }
+            RefreshPlayerCache();
+            RefreshLevelRootCache();
         }
 
         public void RegisterLevelRoot(GameObject root)
@@ -48,18 +48,41 @@ namespace HollowDescent.Bootstrap
             _floorGenerator = gen;
         }
 
+        /// <summary>
+        /// Moves the player to PlayerStart under the given level root (or current cache / Find).
+        /// </summary>
+        public void PlacePlayerAtLevelStart(GameObject levelRootOrNull = null)
+        {
+            RefreshPlayerCache();
+            var rootGo = levelRootOrNull != null ? levelRootOrNull : _levelRoot;
+            if (rootGo == null)
+                rootGo = GameObject.Find("LevelRoot");
+            if (rootGo == null || _player == null) return;
+
+            var startT = FindChildRecursive(rootGo.transform, "PlayerStart");
+            if (startT == null) return;
+
+            _player.SetPositionAndRotation(startT.position, startT.rotation);
+        }
+
         public void LoadLevel(int levelIndex)
         {
             currentLevel = levelIndex;
-            if (_levelRoot != null)
-                Destroy(_levelRoot);
+            RefreshPlayerCache();
+
+            var levelHolder = GameObject.Find("Level");
+            if (levelHolder == null)
+                levelHolder = new GameObject("Level");
+
+            // Destroy() is end-of-frame: instantiating the next level in the same frame leaves two
+            // roots under "Level" and breaks transitions. Clear children immediately.
+            WipeLevelChildrenImmediate(levelHolder.transform);
             _levelRoot = null;
 
-            if (_floorGenerator == null)
-            {
-                var levelGo = GameObject.Find("Level");
-                _floorGenerator = levelGo != null ? levelGo.GetComponent<FloorGenerator>() : null;
-            }
+            if (TrySpawnBakedLevel(levelIndex, levelHolder))
+                return;
+
+            EnsureFloorGenerator(levelHolder);
 
             if (_floorGenerator != null)
             {
@@ -67,10 +90,96 @@ namespace HollowDescent.Bootstrap
                 var startPos = _floorGenerator.GetStartPosition();
                 if (_player != null && startPos.HasValue)
                     _player.position = startPos.Value + Vector3.up;
+                return;
             }
+
+            Debug.LogError(
+                $"[LevelManager] Could not load level {levelIndex}: no Resources prefab at " +
+                $"Prefabs/Levels/Level_{levelIndex:00} (and FloorGenerator could not be added).");
 
             if (_player == null)
                 _player = GameObject.FindGameObjectWithTag("Player")?.transform;
+        }
+
+        private static void WipeLevelChildrenImmediate(Transform levelTransform)
+        {
+            if (levelTransform == null) return;
+            for (var i = levelTransform.childCount - 1; i >= 0; i--)
+            {
+                var child = levelTransform.GetChild(i).gameObject;
+                DestroyImmediate(child);
+            }
+        }
+
+        private void EnsureFloorGenerator(GameObject levelHolder)
+        {
+            if (_floorGenerator == null)
+                _floorGenerator = levelHolder.GetComponent<FloorGenerator>();
+            if (_floorGenerator == null)
+                _floorGenerator = levelHolder.AddComponent<FloorGenerator>();
+            RegisterFloorGenerator(_floorGenerator);
+        }
+
+        private bool TrySpawnBakedLevel(int levelIndex, GameObject levelHolder)
+        {
+            var prefab = GetBakedLevelPrefab(levelIndex);
+            if (prefab == null)
+            {
+                Debug.LogWarning(
+                    "[LevelManager] Resources prefab not found: " +
+                    string.Format(BakedLevelResourceFormat, levelIndex) +
+                    ". Will try FloorGenerator if possible.");
+                return false;
+            }
+
+            _levelRoot = Instantiate(prefab, levelHolder.transform);
+            _levelRoot.name = "LevelRoot";
+            RegisterLevelRoot(_levelRoot);
+            PlacePlayerAtLevelStart(_levelRoot);
+            return true;
+        }
+
+        private GameObject GetBakedLevelPrefab(int levelIndex)
+        {
+            if (levelPrefabOverrides != null && levelIndex >= 1 && levelIndex <= levelPrefabOverrides.Length)
+            {
+                var o = levelPrefabOverrides[levelIndex - 1];
+                if (o != null) return o;
+            }
+
+            return Resources.Load<GameObject>(string.Format(BakedLevelResourceFormat, levelIndex));
+        }
+
+        private void RefreshPlayerCache()
+        {
+            if (_player == null)
+                _player = GameObject.FindGameObjectWithTag("Player")?.transform;
+        }
+
+        private void RefreshLevelRootCache()
+        {
+            if (_levelRoot != null) return;
+            var levelGo = GameObject.Find("Level");
+            if (levelGo != null)
+            {
+                _floorGenerator = levelGo.GetComponent<FloorGenerator>();
+                _levelRoot = levelGo.transform.Find("LevelRoot")?.gameObject;
+            }
+            if (_levelRoot == null)
+                _levelRoot = GameObject.Find("LevelRoot");
+        }
+
+        private static Transform FindChildRecursive(Transform parent, string childName)
+        {
+            if (parent == null) return null;
+            for (var i = 0; i < parent.childCount; i++)
+            {
+                var c = parent.GetChild(i);
+                if (c.name == childName) return c;
+                var deep = FindChildRecursive(c, childName);
+                if (deep != null) return deep;
+            }
+            return null;
         }
 
         private void OnDestroy()

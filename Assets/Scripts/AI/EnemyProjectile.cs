@@ -13,13 +13,15 @@ namespace HollowDescent.AI
         private float _lifetime;
         private int _damage = 1;
         private float _spawnTime;
+        private EnemyBase _owner;
 
-        public void Init(Vector3 direction, float speed, float lifetime, int damage)
+        public void Init(Vector3 direction, float speed, float lifetime, int damage, EnemyBase owner)
         {
             _direction = direction.normalized;
             _speed = speed;
             _lifetime = lifetime;
             _damage = damage;
+            _owner = owner;
             _spawnTime = Time.time;
         }
 
@@ -35,7 +37,8 @@ namespace HollowDescent.AI
             if (other.CompareTag("Player"))
             {
                 var health = other.GetComponent<PlayerHealth>();
-                if (health != null) health.TakeDamage(_damage);
+                if (health != null && health.TakeDamage(_damage))
+                    _owner?.RegisterSuccessfulPlayerHit(other.transform);
                 Destroy(gameObject);
             }
         }
