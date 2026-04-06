@@ -22,6 +22,7 @@ namespace HollowDescent.AI
         public event Action<EnemyBase> OnDeath;
         private Coroutine _stunCoroutine;
         private bool _movementLocked;
+        private bool _pursuitEnabled = true;
 
         protected virtual void Awake()
         {
@@ -67,6 +68,22 @@ namespace HollowDescent.AI
 
         /// <summary>Only this instance pauses pursuit after it lands a hit on the player.</summary>
         protected bool IsHitStunned => _movementLocked;
+        protected bool CanPursue => _pursuitEnabled && !IsHitStunned;
+
+        public void SetPursuitEnabled(bool enabled)
+        {
+            _pursuitEnabled = enabled;
+            if (!enabled)
+            {
+                var rb = GetComponent<Rigidbody>();
+                if (rb != null)
+                {
+                    var vel = rb.linearVelocity;
+                    rb.linearVelocity = new Vector3(0f, vel.y, 0f);
+                    rb.angularVelocity = Vector3.zero;
+                }
+            }
+        }
 
         /// <summary>
         /// Brief knockback away from the player, then hold still for <see cref="playerHitStunSeconds"/>.

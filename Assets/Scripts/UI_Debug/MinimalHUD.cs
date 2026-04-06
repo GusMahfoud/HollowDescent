@@ -130,7 +130,10 @@ namespace HollowDescent.UI_Debug
             var room = gm != null ? gm.CurrentRoomName : "\u2014";
             var enemies = gm != null ? gm.EnemiesRemainingInRoom : 0;
             UpdateLegendRoomState(room);
-            DrawRoomStatusTopLeft(room, enemies);
+            var legendVisible = !_hasLeftFirstRoom || _legendExpandedAfterFirstRoom;
+            var hideRoomStatus = legendVisible;
+            if (!hideRoomStatus)
+                DrawRoomStatusTopLeft(room, enemies);
             DrawPlayerLivesTopRight();
             DrawLegendSectionBottomLeft();
             DrawDeathScreenIfNeeded();
@@ -170,8 +173,8 @@ namespace HollowDescent.UI_Debug
             const float boxW = 560f;
             const float boxH = 320f;
             GUILayout.BeginArea(new Rect((Screen.width - boxW) * 0.5f, (Screen.height - boxH) * 0.5f, boxW, boxH));
-            GUILayout.Label("You died", _deathTitleStyle);
-            GUILayout.Label("Your progress on this run is lost. Restart from Level 1 to try again.", _deathBodyStyle);
+            GUILayout.Label("Run ended", _deathTitleStyle);
+            GUILayout.Label("No lives remaining. Restart from Level 1 to begin a fresh run.", _deathBodyStyle);
             GUILayout.Space(12f);
             if (GUILayout.Button("Restart from Level 1", _fullScreenButtonStyle) && gm != null)
                 gm.RestartFromLevelOne();
@@ -180,18 +183,22 @@ namespace HollowDescent.UI_Debug
 
         private void DrawPlayerLivesTopRight()
         {
+            var gm = GameManager.Instance;
             var playerGo = GameObject.FindGameObjectWithTag("Player");
             var health = playerGo != null ? playerGo.GetComponent<PlayerHealth>() : null;
             var max = health != null ? health.MaxHealth : 5;
             var cur = health != null ? health.CurrentHealth : 0;
+            var livesMax = gm != null ? gm.TotalLives : 3;
+            var livesCur = gm != null ? gm.RemainingLives : livesMax;
 
             var panelW = 210;
             var panelX = Screen.width - padding - panelW;
 
-            var title = $"Lives {cur}/{max}";
+            var title = $"Health {cur}/{max}";
             GUI.Label(new Rect(panelX + 8, padding + 6, panelW - 16, 24), title, _lifeTitleStyle);
+            GUI.Label(new Rect(panelX + 8, padding + 22, panelW - 16, 20), $"Lives {livesCur}/{livesMax}", _rowStyle);
 
-            var rowY = padding + 34;
+            var rowY = padding + 42;
             var totalW = max * (lifeHeartSize + lifeHeartSpacing) - lifeHeartSpacing;
             var heartStartX = panelX + panelW - 10 - totalW;
             for (var i = 0; i < max; i++)
@@ -205,16 +212,18 @@ namespace HollowDescent.UI_Debug
 
         private void DrawLegendSectionBottomLeft()
         {
+            var legendX = padding;
+            var legendHeight = 11 * rowHeight + 59;
+            var centeredLegendY = Mathf.Max(padding, Mathf.RoundToInt((Screen.height - legendHeight) * 0.5f));
+
             if (!_hasLeftFirstRoom)
             {
-                var fullHeight = 11 * rowHeight + 59;
-                var y = Screen.height - padding - fullHeight;
-                DrawLegend(padding, y);
+                DrawLegend(legendX, centeredLegendY);
                 return;
             }
 
-            var buttonX = padding;
-            var buttonY = Screen.height - padding - 32;
+            var buttonX = legendX;
+            var buttonY = Screen.height - Mathf.Max(2, padding - 8) - 32;
             var arrow = _legendExpandedAfterFirstRoom ? "v" : ">";
             var buttonRect = new Rect(buttonX, buttonY, legendBoxWidth, 32);
             if (GUI.Button(buttonRect, arrow + " Color legend", _legendToggleStyle))
@@ -222,8 +231,7 @@ namespace HollowDescent.UI_Debug
 
             if (_legendExpandedAfterFirstRoom)
             {
-                var legendHeight = 11 * rowHeight + 59;
-                DrawLegend(buttonX, buttonY - 6 - legendHeight);
+                DrawLegend(buttonX, centeredLegendY);
             }
         }
 

@@ -35,7 +35,7 @@ namespace HollowDescent.AI
 
         private void Update()
         {
-            if (IsHitStunned) return;
+            if (!CanPursue) return;
             if (Time.time >= _nextFireTime)
             {
                 _nextFireTime = Time.time + fireInterval;
@@ -45,7 +45,7 @@ namespace HollowDescent.AI
 
         private void FixedUpdate()
         {
-            if (IsHitStunned)
+            if (!CanPursue)
             {
                 StopHorizontal();
                 return;

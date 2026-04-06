@@ -116,6 +116,12 @@ namespace HollowDescent.LevelGen
             if (!other.CompareTag("Player")) return;
             if (GameManager.Instance != null)
                 GameManager.Instance.SetCurrentRoom(roomName);
+            if (roomType == RoomType.Combat || roomType == RoomType.Boss)
+            {
+                SetRoomEnemiesPursuitEnabled(true);
+                if (_encounterActive && !_encounterCleared)
+                    SetDoorsOpen(false);
+            }
             if (roomType == RoomType.StartSafe || roomType == RoomType.Safe || roomType == RoomType.LevelExit) return;
             if (_encounterCleared) return;
             if (roomType != RoomType.Combat && roomType != RoomType.Boss) return;
@@ -124,6 +130,34 @@ namespace HollowDescent.LevelGen
             _encounterActive = true;
             SetDoorsOpen(false);
             SpawnEnemies();
+        }
+
+        public static RoomController FindByRoomName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return null;
+            var rooms = FindObjectsByType<RoomController>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            foreach (var room in rooms)
+            {
+                if (room == null) continue;
+                if (string.Equals(room.roomName, name, StringComparison.OrdinalIgnoreCase))
+                    return room;
+            }
+            return null;
+        }
+
+        public void HandlePlayerDeathInRoom()
+        {
+            if (roomType != RoomType.Combat && roomType != RoomType.Boss) return;
+            if (_encounterCleared) return;
+            SetDoorsOpen(true);
+            SetRoomEnemiesPursuitEnabled(false);
+        }
+
+        private void SetRoomEnemiesPursuitEnabled(bool enabled)
+        {
+            _spawnedEnemies.RemoveAll(e => e == null);
+            foreach (var enemy in _spawnedEnemies)
+                enemy.SetPursuitEnabled(enabled);
         }
 
         private void SpawnEnemies()

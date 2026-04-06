@@ -27,7 +27,7 @@ namespace HollowDescent.AI
 
         private void FixedUpdate()
         {
-            if (IsHitStunned)
+            if (!CanPursue)
             {
                 StopHorizontal();
                 return;
