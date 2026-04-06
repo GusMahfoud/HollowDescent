@@ -413,9 +413,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HollowDescent.Bootstrap.GameBootstrap
   playerPrefabOrNull: {fileID: 0}
-  mainCameraOrNull: {fileID: 0}
+  witnessNpcPrefabOrNull: {fileID: 0}
+  mainCameraOrNull: {fileID: 961739752}
   floorGeneratorOrNull: {fileID: 0}
   gameManagerOrNull: {fileID: 0}
+  finalRoomNarrativeClip: {fileID: 0}
 --- !u!4 &1018566580
 Transform:
   m_ObjectHideFlags: 0

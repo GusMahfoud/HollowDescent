@@ -298,13 +298,14 @@ namespace HollowDescent.LevelGen
             floor.transform.SetParent(parent);
             floor.transform.position = r.Center;
             floor.transform.localScale = new Vector3(r.W / 10f, 1f, r.D / 10f);
-            var floorMat = floor.GetComponent<Renderer>().material;
+            Color floorCol;
             if (r.Type == RoomType.StartSafe || r.Type == RoomType.Safe || r.Type == RoomType.LevelExit)
-                floorMat.color = new Color(0.5f, 0.55f, 0.45f);
+                floorCol = new Color(0.5f, 0.55f, 0.45f);
             else if (r.Type == RoomType.Boss)
-                floorMat.color = new Color(0.4f, 0.35f, 0.45f);
+                floorCol = new Color(0.4f, 0.35f, 0.45f);
             else
-                floorMat.color = new Color(0.45f, 0.4f, 0.4f);
+                floorCol = new Color(0.45f, 0.4f, 0.4f);
+            GrayboxTintUtil.Apply(floor.GetComponent<Renderer>(), floorCol);
 
             var lightGo = new GameObject("RoomLight_" + r.Name);
             lightGo.transform.SetParent(parent);
@@ -347,7 +348,7 @@ namespace HollowDescent.LevelGen
                     doorBlocker.transform.position = door.Position + Vector3.up * (wallHeight * 0.5f);
                     doorBlocker.transform.localScale = new Vector3(door.Width, wallHeight, 1f);
                     if (door.Normal.x != 0) doorBlocker.transform.localScale = new Vector3(1f, wallHeight, door.Width);
-                    doorBlocker.GetComponent<Renderer>().material.color = new Color(0.3f, 0.25f, 0.2f);
+                    GrayboxTintUtil.Apply(doorBlocker.GetComponent<Renderer>(), new Color(0.3f, 0.25f, 0.2f));
                     BuildCorridorSegment(parent, door);
                 }
             }
@@ -363,7 +364,7 @@ namespace HollowDescent.LevelGen
             PlaceFloorDecals(parent, r);
             PlaceParticleEffects(parent, r);
 
-            // === STEP 4: DYNAMIC WORLDBUILDING ñ random event per combat room ===
+            // === STEP 4: DYNAMIC WORLDBUILDING ù random event per combat room ===
             if (r.Type == RoomType.Combat || r.Type == RoomType.Boss)
             {
                 var eventGo = new GameObject("RandomEvent_" + r.Name);
@@ -382,7 +383,7 @@ namespace HollowDescent.LevelGen
             exitObj.transform.position = r.Center + new Vector3(0f, 1.2f, 0f);
             exitObj.transform.localScale = new Vector3(2.5f, 2.5f, 2.5f);
             var rend = exitObj.GetComponent<Renderer>();
-            if (rend != null) rend.material.color = new Color(0.2f, 0.6f, 1f);
+            if (rend != null) GrayboxTintUtil.Apply(rend, new Color(0.2f, 0.6f, 1f));
             var col = exitObj.GetComponent<Collider>();
             if (col != null) col.isTrigger = true;
             exitObj.AddComponent<LevelExitTrigger>();
@@ -399,7 +400,7 @@ namespace HollowDescent.LevelGen
                 corridor.transform.localScale = new Vector3(corridorLength / 10f, 1f, corridorWidth / 10f);
             else
                 corridor.transform.localScale = new Vector3(corridorWidth / 10f, 1f, corridorLength / 10f);
-            corridor.GetComponent<Renderer>().material.color = new Color(0.42f, 0.4f, 0.38f);
+            GrayboxTintUtil.Apply(corridor.GetComponent<Renderer>(), new Color(0.42f, 0.4f, 0.38f));
         }
 
         private void BuildWallsWithDoorGaps(Transform parent, RoomDef r, float wallThickness)
@@ -464,7 +465,7 @@ namespace HollowDescent.LevelGen
             w.transform.SetParent(parent);
             w.transform.position = pos;
             w.transform.localScale = scale;
-            w.GetComponent<Renderer>().material.color = new Color(0.35f, 0.35f, 0.38f);
+            GrayboxTintUtil.Apply(w.GetComponent<Renderer>(), new Color(0.35f, 0.35f, 0.38f));
         }
 
         private void PlaceOcclusionAndLandmarks(Transform parent, RoomDef r)
@@ -478,7 +479,7 @@ namespace HollowDescent.LevelGen
                 landmark.transform.SetParent(parent);
                 landmark.transform.position = r.Center + new Vector3(-halfW * 0.4f, landmarkPillarHeight * 0.5f, 0f);
                 landmark.transform.localScale = new Vector3(pillarSize, landmarkPillarHeight, pillarSize);
-                landmark.GetComponent<Renderer>().material.color = new Color(0.6f, 0.7f, 0.5f);
+                GrayboxTintUtil.Apply(landmark.GetComponent<Renderer>(), new Color(0.6f, 0.7f, 0.5f));
             }
             else if (r.Type == RoomType.Combat || r.Type == RoomType.Boss)
             {
@@ -487,21 +488,22 @@ namespace HollowDescent.LevelGen
                 pillar1.transform.SetParent(parent);
                 pillar1.transform.position = r.Center + new Vector3(halfW * 0.3f, wallHeight * 0.5f, halfD * 0.2f);
                 pillar1.transform.localScale = new Vector3(pillarSize, wallHeight, pillarSize);
-                pillar1.GetComponent<Renderer>().material.color = new Color(0.4f, 0.38f, 0.42f);
+                GrayboxTintUtil.Apply(pillar1.GetComponent<Renderer>(), new Color(0.4f, 0.38f, 0.42f));
 
                 var pillar2 = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 pillar2.name = "Occlusion_Pillar";
                 pillar2.transform.SetParent(parent);
                 pillar2.transform.position = r.Center + new Vector3(-halfW * 0.35f, wallHeight * 0.5f, -halfD * 0.3f);
                 pillar2.transform.localScale = new Vector3(pillarSize, wallHeight, pillarSize);
-                pillar2.GetComponent<Renderer>().material.color = new Color(0.4f, 0.38f, 0.42f);
+                GrayboxTintUtil.Apply(pillar2.GetComponent<Renderer>(), new Color(0.4f, 0.38f, 0.42f));
 
                 var landmark = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 landmark.name = "Landmark_Combat";
                 landmark.transform.SetParent(parent);
                 landmark.transform.position = r.Center + new Vector3(0f, landmarkPillarHeight * 0.5f, halfD * 0.5f);
                 landmark.transform.localScale = new Vector3(pillarSize * 0.8f, landmarkPillarHeight, pillarSize * 0.8f);
-                landmark.GetComponent<Renderer>().material.color = r.Type == RoomType.Boss ? new Color(0.6f, 0.2f, 0.25f) : new Color(0.55f, 0.45f, 0.35f);
+                GrayboxTintUtil.Apply(landmark.GetComponent<Renderer>(),
+                    r.Type == RoomType.Boss ? new Color(0.6f, 0.2f, 0.25f) : new Color(0.55f, 0.45f, 0.35f));
             }
         }
 
@@ -515,7 +517,7 @@ namespace HollowDescent.LevelGen
             pad.transform.SetParent(parent);
             pad.transform.position = r.Center + new Vector3(halfW * 0.25f, raisedPadHeight * 0.5f, -halfD * 0.3f);
             pad.transform.localScale = new Vector3(raisedPadSize, raisedPadHeight, raisedPadSize);
-            pad.GetComponent<Renderer>().material.color = new Color(0.5f, 0.48f, 0.52f);
+            GrayboxTintUtil.Apply(pad.GetComponent<Renderer>(), new Color(0.5f, 0.48f, 0.52f));
         }
 
         private void BuildRoomController(Transform parent, RoomDef r, Transform geometryParent)
@@ -576,7 +578,7 @@ namespace HollowDescent.LevelGen
         // =========================================================
 
         /// <summary>
-        /// Part 1 ñ Prop-based storytelling.
+        /// Part 1 ù Prop-based storytelling.
         /// Combat rooms: tipped table + scattered crates = signs of struggle.
         /// Safe rooms: neat bench + supply crate = place of rest/refuge.
         /// </summary>
@@ -587,16 +589,16 @@ namespace HollowDescent.LevelGen
 
             if (r.Type == RoomType.Combat || r.Type == RoomType.Boss)
             {
-                // Tipped table (rotated flat cube) ñ suggests someone was in a hurry / struggle
+                // Tipped table (rotated flat cube) ù suggests someone was in a hurry / struggle
                 var table = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 table.name = "Prop_TippedTable";
                 table.transform.SetParent(parent);
                 table.transform.position = r.Center + new Vector3(-halfW * 0.5f, 0.25f, halfD * 0.4f);
                 table.transform.localScale = new Vector3(1.8f, 0.12f, 0.9f);
                 table.transform.rotation = Quaternion.Euler(0f, 15f, 52f); // tipped over
-                table.GetComponent<Renderer>().material.color = new Color(0.45f, 0.3f, 0.2f);
+                GrayboxTintUtil.Apply(table.GetComponent<Renderer>(), new Color(0.45f, 0.3f, 0.2f));
 
-                // Scattered crates ñ debris from the struggle
+                // Scattered crates ù debris from the struggle
                 var offsets = new Vector3[]
                 {
                     new Vector3(-halfW * 0.45f, 0.2f,  halfD * 0.55f),
@@ -612,7 +614,7 @@ namespace HollowDescent.LevelGen
                     crate.transform.position = r.Center + offsets[i];
                     crate.transform.localScale = new Vector3(0.55f, 0.55f, 0.55f);
                     crate.transform.rotation = Quaternion.Euler(0f, rotations[i], 0f);
-                    crate.GetComponent<Renderer>().material.color = new Color(0.4f, 0.28f, 0.18f);
+                    GrayboxTintUtil.Apply(crate.GetComponent<Renderer>(), new Color(0.4f, 0.28f, 0.18f));
                 }
 
                 // Skeletal remains (thin flat slab on the floor)
@@ -622,30 +624,30 @@ namespace HollowDescent.LevelGen
                 remains.transform.position = r.Center + new Vector3(halfW * 0.4f, 0.03f, -halfD * 0.4f);
                 remains.transform.localScale = new Vector3(0.4f, 0.06f, 1.5f);
                 remains.transform.rotation = Quaternion.Euler(0f, 30f, 0f);
-                remains.GetComponent<Renderer>().material.color = new Color(0.85f, 0.82f, 0.75f);
+                GrayboxTintUtil.Apply(remains.GetComponent<Renderer>(), new Color(0.85f, 0.82f, 0.75f));
             }
             else if (r.Type == RoomType.Safe || r.Type == RoomType.StartSafe)
             {
-                // Bench ñ a place of rest
+                // Bench ù a place of rest
                 var bench = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 bench.name = "Prop_Bench";
                 bench.transform.SetParent(parent);
                 bench.transform.position = r.Center + new Vector3(-halfW * 0.6f, 0.3f, halfD * 0.5f);
                 bench.transform.localScale = new Vector3(2f, 0.2f, 0.5f);
-                bench.GetComponent<Renderer>().material.color = new Color(0.5f, 0.38f, 0.25f);
+                GrayboxTintUtil.Apply(bench.GetComponent<Renderer>(), new Color(0.5f, 0.38f, 0.25f));
 
-                // Supply crate ñ someone prepared for survival here
+                // Supply crate ù someone prepared for survival here
                 var supply = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 supply.name = "Prop_SupplyCrate";
                 supply.transform.SetParent(parent);
                 supply.transform.position = r.Center + new Vector3(-halfW * 0.6f, 0.35f, halfD * 0.35f);
                 supply.transform.localScale = new Vector3(0.6f, 0.6f, 0.6f);
-                supply.GetComponent<Renderer>().material.color = new Color(0.55f, 0.5f, 0.3f);
+                GrayboxTintUtil.Apply(supply.GetComponent<Renderer>(), new Color(0.55f, 0.5f, 0.3f));
             }
         }
 
         /// <summary>
-        /// Part 2 ñ Light and Atmosphere.
+        /// Part 2 ù Light and Atmosphere.
         /// Combat/Boss: dim red flickering light = danger, horror.
         /// Safe/Start:  warm golden light = relief, safety.
         /// </summary>
@@ -653,7 +655,7 @@ namespace HollowDescent.LevelGen
         {
             if (r.Type == RoomType.Combat || r.Type == RoomType.Boss)
             {
-                // Main danger light ñ red/orange, flickers
+                // Main danger light ù red/orange, flickers
                 var dangerLightGo = new GameObject("AtmosLight_Danger");
                 dangerLightGo.transform.SetParent(parent);
                 dangerLightGo.transform.position = r.Center + new Vector3(halfWHelper(r) * 0.3f, wallHeight * 0.7f, 0f);
@@ -677,7 +679,7 @@ namespace HollowDescent.LevelGen
             }
             else if (r.Type == RoomType.Safe || r.Type == RoomType.StartSafe)
             {
-                // Warm golden safe light ñ calm, welcoming
+                // Warm golden safe light ù calm, welcoming
                 var safeLightGo = new GameObject("AtmosLight_Safe");
                 safeLightGo.transform.SetParent(parent);
                 safeLightGo.transform.position = r.Center + new Vector3(0f, wallHeight * 0.75f, 0f);
@@ -686,7 +688,7 @@ namespace HollowDescent.LevelGen
                 safeLight.color = new Color(1f, 0.85f, 0.5f);
                 safeLight.intensity = 2.2f;
                 safeLight.range = Mathf.Max(r.W, r.D) * 0.9f;
-                // No flicker ñ safe rooms are stable
+                // No flicker ù safe rooms are stable
             }
         }
 
@@ -694,7 +696,7 @@ namespace HollowDescent.LevelGen
         private float halfDHelper(RoomDef r) => r.D * 0.5f;
 
         /// <summary>
-        /// Part 3 ñ Decals and Details.
+        /// Part 3 ù Decals and Details.
         /// Flat quads on the floor simulating bloodstains near where enemies spawn.
         /// Also adds scorch marks near the level exit portal.
         /// </summary>
@@ -718,7 +720,7 @@ namespace HollowDescent.LevelGen
                     stain.transform.position = stainPositions[i];
                     stain.transform.rotation = Quaternion.Euler(90f, Random.Range(0f, 360f), 0f);
                     stain.transform.localScale = Vector3.one * stainSizes[i];
-                    stain.GetComponent<Renderer>().material.color = new Color(0.45f, 0.05f, 0.05f, 0.9f);
+                    GrayboxTintUtil.Apply(stain.GetComponent<Renderer>(), new Color(0.45f, 0.05f, 0.05f, 0.9f));
                     stain.GetComponent<Collider>().enabled = false;
                 }
 
@@ -731,7 +733,7 @@ namespace HollowDescent.LevelGen
                     footprint.transform.position = r.Center + new Vector3(-r.W * 0.1f * i, 0.01f, r.D * 0.05f * i);
                     footprint.transform.rotation = Quaternion.Euler(90f, 45f, 0f);
                     footprint.transform.localScale = new Vector3(0.4f, 0.25f, 1f);
-                    footprint.GetComponent<Renderer>().material.color = new Color(0.25f, 0.2f, 0.18f);
+                    GrayboxTintUtil.Apply(footprint.GetComponent<Renderer>(), new Color(0.25f, 0.2f, 0.18f));
                     footprint.GetComponent<Collider>().enabled = false;
                 }
             }
@@ -744,20 +746,20 @@ namespace HollowDescent.LevelGen
                 scorch.transform.position = r.Center + new Vector3(0f, 0.01f, 0f);
                 scorch.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
                 scorch.transform.localScale = Vector3.one * 3.5f;
-                scorch.GetComponent<Renderer>().material.color = new Color(0.15f, 0.12f, 0.1f);
+                GrayboxTintUtil.Apply(scorch.GetComponent<Renderer>(), new Color(0.15f, 0.12f, 0.1f));
                 scorch.GetComponent<Collider>().enabled = false;
             }
         }
 
         /// <summary>
-        /// Particle Effects ñ floating dust in combat rooms (long abandonment),
+        /// Particle Effects ù floating dust in combat rooms (long abandonment),
         /// embers/sparks near the level exit portal (magical energy).
         /// </summary>
         private void PlaceParticleEffects(Transform parent, RoomDef r)
         {
             if (r.Type == RoomType.Combat || r.Type == RoomType.Boss)
             {
-                // Dust/smoke particles drifting slowly ñ room has been abandoned a long time
+                // Dust/smoke particles drifting slowly ù room has been abandoned a long time
                 var dustGo = new GameObject("Particles_Dust");
                 dustGo.transform.SetParent(parent);
                 dustGo.transform.position = r.Center + new Vector3(0f, 1.2f, 0f);
@@ -777,17 +779,17 @@ namespace HollowDescent.LevelGen
                 main.maxParticles = 60;
                 main.simulationSpace = ParticleSystemSimulationSpace.World;
 
-                // Emission ñ slow constant drizzle
+                // Emission ù slow constant drizzle
                 var emission = dust.emission;
                 emission.rateOverTime = 8f;
 
-                // Shape ñ spread across floor area so dust fills the room
+                // Shape ù spread across floor area so dust fills the room
                 var shape = dust.shape;
                 shape.enabled = true;
                 shape.shapeType = ParticleSystemShapeType.Box;
                 shape.scale = new Vector3(r.W * 0.7f, 0.1f, r.D * 0.7f);
 
-                // Velocity over lifetime ñ slow upward drift
+                // Velocity over lifetime ù slow upward drift
                 var vel = dust.velocityOverLifetime;
                 vel.enabled = true;
                 vel.space = ParticleSystemSimulationSpace.World;
@@ -825,7 +827,7 @@ namespace HollowDescent.LevelGen
 
             if (r.Type == RoomType.LevelExit)
             {
-                // Ember/spark particles swirling around the portal ñ magical energy
+                // Ember/spark particles swirling around the portal ù magical energy
                 var emberGo = new GameObject("Particles_Embers");
                 emberGo.transform.SetParent(parent);
                 emberGo.transform.position = r.Center + new Vector3(0f, 0.5f, 0f);
@@ -844,18 +846,18 @@ namespace HollowDescent.LevelGen
                 main.maxParticles = 80;
                 main.simulationSpace = ParticleSystemSimulationSpace.World;
 
-                // Emission ñ frequent bursts
+                // Emission ù frequent bursts
                 var emission = embers.emission;
                 emission.rateOverTime = 20f;
 
-                // Shape ñ cone shooting upward from portal base
+                // Shape ù cone shooting upward from portal base
                 var shape = embers.shape;
                 shape.enabled = true;
                 shape.shapeType = ParticleSystemShapeType.Cone;
                 shape.angle = 35f;
                 shape.radius = 1.2f;
 
-                // Velocity ñ swirl upward
+                // Velocity ù swirl upward
                 var vel = embers.velocityOverLifetime;
                 vel.enabled = true;
                 vel.space = ParticleSystemSimulationSpace.World;

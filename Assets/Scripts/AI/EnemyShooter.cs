@@ -15,13 +15,47 @@ namespace HollowDescent.AI
 
         private Transform _player;
         private float _nextFireTime;
+        private Rigidbody _rb;
 
         public void SetPlayer(Transform p) => _player = p;
 
+        public void ApplyCombatProfile(float moveSpd, float preferredDist, float fireInt, float projSpd)
+        {
+            moveSpeed = Mathf.Max(0.5f, moveSpd);
+            preferredDistance = Mathf.Clamp(preferredDist, 3f, 14f);
+            fireInterval = Mathf.Clamp(fireInt, 0.4f, 3.5f);
+            projectileSpeed = Mathf.Max(3f, projSpd);
+        }
+
+        protected override void Awake()
+        {
+            base.Awake();
+            _rb = GetComponent<Rigidbody>();
+        }
+
         private void Update()
         {
+            if (IsHitStunned) return;
+            if (Time.time >= _nextFireTime)
+            {
+                _nextFireTime = Time.time + fireInterval;
+                Fire();
+            }
+        }
+
+        private void FixedUpdate()
+        {
+            if (IsHitStunned)
+            {
+                StopHorizontal();
+                return;
+            }
             if (_player == null) _player = GameObject.FindGameObjectWithTag("Player")?.transform;
-            if (_player == null) return;
+            if (_player == null)
+            {
+                StopHorizontal();
+                return;
+            }
             var toPlayer = _player.position - transform.position;
             toPlayer.y = 0f;
             var dist = toPlayer.magnitude;
@@ -29,16 +63,32 @@ namespace HollowDescent.AI
             {
                 var dir = toPlayer.normalized;
                 transform.forward = dir;
+                Vector3 v;
                 if (dist < preferredDistance * 0.9f)
-                    transform.position -= dir * (moveSpeed * Time.deltaTime);
+                    v = -dir * moveSpeed;
                 else if (dist > preferredDistance * 1.1f)
-                    transform.position += dir * (moveSpeed * Time.deltaTime);
+                    v = dir * moveSpeed;
+                else
+                    v = Vector3.zero;
+
+                if (_rb != null)
+                {
+                    var vel = _rb.linearVelocity;
+                    _rb.linearVelocity = new Vector3(v.x, vel.y, v.z);
+                    _rb.angularVelocity = Vector3.zero;
+                }
+                else if (v.sqrMagnitude > 0.01f)
+                    transform.position += v * Time.fixedDeltaTime;
             }
-            if (Time.time >= _nextFireTime)
-            {
-                _nextFireTime = Time.time + fireInterval;
-                Fire();
-            }
+            else
+                StopHorizontal();
+        }
+
+        private void StopHorizontal()
+        {
+            if (_rb == null) return;
+            var vel = _rb.linearVelocity;
+            _rb.linearVelocity = new Vector3(0f, vel.y, 0f);
         }
 
         private void Fire()
@@ -54,9 +104,10 @@ namespace HollowDescent.AI
             proj.transform.localScale = Vector3.one * 0.4f;
             proj.GetComponent<Collider>().isTrigger = true;
             var rb = proj.AddComponent<Rigidbody>();
+            rb.isKinematic = true;
             rb.useGravity = false;
             var p = proj.AddComponent<EnemyProjectile>();
-            p.Init(dir, projectileSpeed, 2f, 1);
+            p.Init(dir, projectileSpeed, 2f, 1, this);
         }
 
         private void OnCollisionStay(Collision other)

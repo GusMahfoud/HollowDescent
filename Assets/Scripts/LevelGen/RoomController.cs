@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using HollowDescent.AI;
@@ -48,6 +49,41 @@ namespace HollowDescent.LevelGen
         {
             _trigger = GetComponent<BoxCollider>();
             if (_trigger != null) _trigger.isTrigger = true;
+            ReconcileDoorBlockersFromScene();
+        }
+
+        /// <summary>
+        /// Serialized door references can break after bake/instance changes; merge in any DoorBlocker under this room's geometry.
+        /// </summary>
+        private void ReconcileDoorBlockersFromScene()
+        {
+            doorBlockers.RemoveAll(d => d == null);
+
+            var levelRoot = transform.parent;
+            if (levelRoot == null) return;
+
+            Transform geo = null;
+            var expected = "RoomGeometry_" + roomName;
+            for (var i = 0; i < levelRoot.childCount; i++)
+            {
+                var c = levelRoot.GetChild(i);
+                if (c.name == expected ||
+                    (c.name.StartsWith("RoomGeometry_", StringComparison.Ordinal) &&
+                     roomName != null &&
+                     c.name.EndsWith(roomName, StringComparison.Ordinal)))
+                {
+                    geo = c;
+                    break;
+                }
+            }
+            if (geo == null) return;
+
+            for (var i = 0; i < geo.childCount; i++)
+            {
+                var t = geo.GetChild(i);
+                if (t.name == "DoorBlocker")
+                    RegisterDoor(t);
+            }
         }
 
         private void Start()
@@ -94,7 +130,11 @@ namespace HollowDescent.LevelGen
         {
             _spawnedEnemies.Clear();
             var player = GameObject.FindGameObjectWithTag("Player");
-            if (player == null) return;
+            if (player == null)
+            {
+                FinishEncounterIfNoEnemiesSpawned();
+                return;
+            }
 
             var spawns = new List<(Transform t, bool flank)>();
             for (var i = 0; i < enemySpawnPoints.Count; i++)
@@ -138,6 +178,17 @@ namespace HollowDescent.LevelGen
             }
 
             UpdateGMEnemyCount();
+            FinishEncounterIfNoEnemiesSpawned();
+        }
+
+        /// <summary>
+        /// Prevents soft-lock when spawn lists are empty, counts are zero, or Player was missing during spawn.
+        /// </summary>
+        private void FinishEncounterIfNoEnemiesSpawned()
+        {
+            if (!_encounterActive || _encounterCleared) return;
+            if (_spawnedEnemies.Count > 0) return;
+            OnEncounterCleared();
         }
 
         private EnemyBase SpawnEnemyAt(Vector3 pos, bool shooter, bool flanker)
@@ -154,6 +205,7 @@ namespace HollowDescent.LevelGen
                 if (eb != null)
                 {
                     eb.OnDeath += OnEnemyDied;
+                    ApplySpawnVariety(eb, shooter, flanker);
                     return eb;
                 }
             }
@@ -164,8 +216,61 @@ namespace HollowDescent.LevelGen
             else primitive = CreateChaserPrimitive(pos);
 
             var enemy = primitive.GetComponent<EnemyBase>();
-            if (enemy != null) enemy.OnDeath += OnEnemyDied;
+            if (enemy != null)
+            {
+                enemy.OnDeath += OnEnemyDied;
+                ApplySpawnVariety(enemy, shooter, flanker);
+            }
             return enemy;
+        }
+
+        /// <summary>Per-instance stat bands so chaser / shooter / flanker feel different run-to-run.</summary>
+        private void ApplySpawnVariety(EnemyBase eb, bool shooter, bool flanker)
+        {
+            if (eb == null) return;
+            var seed = eb.gameObject.GetInstanceID() ^ (roomName != null ? roomName.GetHashCode() : 0);
+            var rng = new System.Random(seed);
+            var bossBump = roomType == RoomType.Boss ? rng.Next(0, 2) : 0;
+
+            if (flanker && eb is EnemyFlanker ef)
+            {
+                eb.ApplyRuntimeCombatStats(rng.Next(2, 5) + bossBump, rng.Next(1, 3));
+                ef.ApplyMovementProfile(rng.Next(38, 63) / 10f, rng.Next(35, 105) / 100f);
+                MaybeTintRuntimePrimitive(eb, rng, flanker, shooter);
+            }
+            else if (shooter && eb is EnemyShooter es)
+            {
+                eb.ApplyRuntimeCombatStats(rng.Next(2, 4) + bossBump, rng.Next(1, 3));
+                es.ApplyCombatProfile(
+                    rng.Next(24, 36) / 10f,
+                    rng.Next(50, 80) / 10f,
+                    rng.Next(11, 22) / 10f,
+                    rng.Next(85, 125) / 10f);
+                MaybeTintRuntimePrimitive(eb, rng, flanker, shooter);
+            }
+            else if (eb is EnemyChaser ec)
+            {
+                eb.ApplyRuntimeCombatStats(rng.Next(1, 4) + bossBump, rng.Next(1, 3));
+                ec.ApplyMovementProfile(rng.Next(30, 52) / 10f);
+                MaybeTintRuntimePrimitive(eb, rng, flanker, shooter);
+            }
+            else
+            {
+                eb.ApplyRuntimeCombatStats(rng.Next(2, 4) + bossBump, rng.Next(1, 3));
+            }
+        }
+
+        private static void MaybeTintRuntimePrimitive(EnemyBase eb, System.Random rng, bool flanker, bool shooter)
+        {
+            if (eb == null || !eb.gameObject.name.StartsWith("Enemy_", StringComparison.Ordinal)) return;
+            var r = eb.GetComponent<Renderer>();
+            if (r == null) return;
+            if (flanker)
+                GrayboxTintUtil.Apply(r, new Color(0.5f + (float)rng.NextDouble() * 0.25f, 0.1f, 0.5f + (float)rng.NextDouble() * 0.22f));
+            else if (shooter)
+                GrayboxTintUtil.Apply(r, new Color(0.78f + (float)rng.NextDouble() * 0.15f, 0.32f + (float)rng.NextDouble() * 0.18f, 0.06f));
+            else
+                GrayboxTintUtil.Apply(r, new Color(0.85f + (float)rng.NextDouble() * 0.1f, 0.1f + (float)rng.NextDouble() * 0.18f, 0.1f + (float)rng.NextDouble() * 0.18f));
         }
 
         private GameObject CreateChaserPrimitive(Vector3 pos)
@@ -177,10 +282,10 @@ namespace HollowDescent.LevelGen
             var col = go.GetComponent<Collider>();
             if (col != null) col.isTrigger = false;
             var rb = go.AddComponent<Rigidbody>();
+            rb.useGravity = false;
             rb.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY;
             rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
-            var mat = go.GetComponent<Renderer>().material;
-            if (mat != null) mat.color = new Color(0.9f, 0.2f, 0.2f);
+            GrayboxTintUtil.Apply(go.GetComponent<Renderer>(), new Color(0.9f, 0.2f, 0.2f));
             var chaser = go.AddComponent<EnemyChaser>();
             chaser.SetPlayer(GameObject.FindGameObjectWithTag("Player")?.transform);
             return go;
@@ -195,9 +300,9 @@ namespace HollowDescent.LevelGen
             var col = go.GetComponent<Collider>();
             if (col != null) col.isTrigger = false;
             var rb = go.AddComponent<Rigidbody>();
+            rb.useGravity = false;
             rb.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY;
-            var mat = go.GetComponent<Renderer>().material;
-            if (mat != null) mat.color = new Color(0.8f, 0.4f, 0.1f);
+            GrayboxTintUtil.Apply(go.GetComponent<Renderer>(), new Color(0.8f, 0.4f, 0.1f));
             var shooter = go.AddComponent<EnemyShooter>();
             shooter.SetPlayer(GameObject.FindGameObjectWithTag("Player")?.transform);
             return go;
@@ -212,9 +317,9 @@ namespace HollowDescent.LevelGen
             var col = go.GetComponent<Collider>();
             if (col != null) col.isTrigger = false;
             var rb = go.AddComponent<Rigidbody>();
+            rb.useGravity = false;
             rb.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY;
-            var mat = go.GetComponent<Renderer>().material;
-            if (mat != null) mat.color = new Color(0.6f, 0.2f, 0.6f);
+            GrayboxTintUtil.Apply(go.GetComponent<Renderer>(), new Color(0.6f, 0.2f, 0.6f));
             var flanker = go.AddComponent<EnemyFlanker>();
             flanker.SetPlayer(GameObject.FindGameObjectWithTag("Player")?.transform);
             return go;
@@ -253,7 +358,7 @@ namespace HollowDescent.LevelGen
             _rewardMarker.transform.localScale = new Vector3(0.8f, 0.8f, 0.8f);
             _rewardMarker.GetComponent<Collider>().enabled = false;
             var r = _rewardMarker.GetComponent<Renderer>();
-            if (r != null) r.material.color = new Color(1f, 0.9f, 0.2f);
+            if (r != null) GrayboxTintUtil.Apply(r, new Color(1f, 0.9f, 0.2f));
         }
 
         private void OnDrawGizmos()

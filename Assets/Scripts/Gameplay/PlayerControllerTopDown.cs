@@ -55,14 +55,25 @@ namespace HollowDescent.Gameplay
 
         private void FixedUpdate()
         {
-            if (_moveInput.sqrMagnitude <= 0.01f) return;
-            var delta = _moveInput * (moveSpeed * Time.fixedDeltaTime);
             if (_rb != null)
             {
-                _rb.MovePosition(_rb.position + delta);
+                var horizontal = new Vector3(_moveInput.x, 0f, _moveInput.z);
+                if (horizontal.sqrMagnitude > 0.01f)
+                {
+                    var v = horizontal.normalized * moveSpeed;
+                    var vel = _rb.linearVelocity;
+                    _rb.linearVelocity = new Vector3(v.x, vel.y, v.z);
+                }
+                else
+                {
+                    var vel = _rb.linearVelocity;
+                    _rb.linearVelocity = new Vector3(0f, vel.y, 0f);
+                }
+                _rb.angularVelocity = Vector3.zero;
                 return;
             }
-            transform.position += delta;
+            if (_moveInput.sqrMagnitude > 0.01f)
+                transform.position += _moveInput * (moveSpeed * Time.fixedDeltaTime);
         }
 
         private bool GetCursorAimDirection(out Vector3 direction)
@@ -168,7 +179,8 @@ namespace HollowDescent.Gameplay
             rb.useGravity = false;
             rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
             var p = proj.AddComponent<Projectile>();
-            p.Init(aimDir, projectileSpeed, projectileLifetime);
+            var hitR = Mathf.Max(0.08f, projectileRadius * 1.15f);
+            p.Init(aimDir, projectileSpeed, projectileLifetime, hitR);
         }
     }
 }
