@@ -10,17 +10,18 @@ namespace HollowDescent.UI_Debug
     public class MinimalHUD : MonoBehaviour
     {
         [Header("Style")]
-        [SerializeField] private int fontSize = 32;
-        [SerializeField] private int padding = 18;
-        [SerializeField] private int legendBoxWidth = 346;
-        [SerializeField] private int swatchSize = 24;
-        [SerializeField] private int rowHeight = 34;
+        [SerializeField] private int fontSize = 20;
+        [SerializeField] private int padding = 10;
+        [SerializeField] private int legendBoxWidth = 300;
+        [SerializeField] private int swatchSize = 16;
+        [SerializeField] private int rowHeight = 24;
+        [SerializeField] private string firstRoomName = "Start (Safe)";
 
         [Header("Lives (top-right)")]
         [SerializeField] private Color lifeFullColor = new Color(1f, 0.38f, 0.42f, 1f);
         [SerializeField] private Color lifeEmptyColor = new Color(0.42f, 0.42f, 0.45f, 0.42f);
-        [SerializeField] private int lifeHeartSize = 38;
-        [SerializeField] private int lifeHeartSpacing = 6;
+        [SerializeField] private int lifeHeartSize = 24;
+        [SerializeField] private int lifeHeartSpacing = 4;
 
         [Header("Death screen")]
         [SerializeField] private int deathTitleFontSize = 54;
@@ -29,15 +30,19 @@ namespace HollowDescent.UI_Debug
         private GUIStyle _labelStyle;
         private GUIStyle _legendTitleStyle;
         private GUIStyle _rowStyle;
+        private GUIStyle _legendToggleStyle;
         private GUIStyle _lifeTitleStyle;
         private GUIStyle _lifeHeartStyle;
         private GUIStyle _deathTitleStyle;
         private GUIStyle _deathBodyStyle;
         private GUIStyle _fullScreenButtonStyle;
 
+        private bool _hasLeftFirstRoom;
+        private bool _legendExpandedAfterFirstRoom;
+
         private void OnGUI()
         {
-            if (_labelStyle == null || _legendTitleStyle == null || _rowStyle == null || _lifeTitleStyle == null || _lifeHeartStyle == null ||
+            if (_labelStyle == null || _legendTitleStyle == null || _rowStyle == null || _legendToggleStyle == null || _lifeTitleStyle == null || _lifeHeartStyle == null ||
                 _deathTitleStyle == null || _deathBodyStyle == null || _fullScreenButtonStyle == null)
             {
                 GUIStyle baseStyle = null;
@@ -45,18 +50,21 @@ namespace HollowDescent.UI_Debug
                     baseStyle = GUI.skin.label ?? GUI.skin.box;
                 if (baseStyle == null)
                     baseStyle = new GUIStyle();
+
                 var font = baseStyle.font ?? Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf") ?? Resources.GetBuiltinResource<Font>("Arial.ttf");
                 _labelStyle = new GUIStyle(baseStyle)
                 {
                     font = font,
                     fontSize = fontSize,
+                    richText = true,
+                    alignment = TextAnchor.UpperLeft,
                     normal = { textColor = Color.white },
-                    padding = new RectOffset(padding, padding, padding, padding)
+                    padding = new RectOffset(0, 0, 0, 0)
                 };
                 _legendTitleStyle = new GUIStyle(baseStyle)
                 {
                     font = font,
-                    fontSize = fontSize,
+                    fontSize = Mathf.Max(14, fontSize - 2),
                     fontStyle = FontStyle.Bold,
                     normal = { textColor = Color.white }
                 };
@@ -67,12 +75,19 @@ namespace HollowDescent.UI_Debug
                     normal = { textColor = new Color(1f, 1f, 1f, 1f) },
                     padding = new RectOffset(4, 2, 4, 2)
                 };
+                _legendToggleStyle = new GUIStyle(GUI.skin != null ? GUI.skin.button : baseStyle)
+                {
+                    font = font,
+                    fontSize = Mathf.Max(14, fontSize - 8),
+                    alignment = TextAnchor.MiddleLeft,
+                    padding = new RectOffset(10, 8, 6, 6)
+                };
                 _lifeTitleStyle = new GUIStyle(baseStyle)
                 {
                     font = font,
-                    fontSize = Mathf.Max(18, fontSize - 4),
+                    fontSize = Mathf.Max(14, fontSize - 3),
                     fontStyle = FontStyle.Bold,
-                    alignment = TextAnchor.UpperRight,
+                    alignment = TextAnchor.UpperLeft,
                     normal = { textColor = Color.white }
                 };
                 _lifeHeartStyle = new GUIStyle(baseStyle)
@@ -108,22 +123,37 @@ namespace HollowDescent.UI_Debug
                 };
             }
 
-            if (_labelStyle == null || _legendTitleStyle == null || _rowStyle == null || _lifeTitleStyle == null || _lifeHeartStyle == null ||
+            if (_labelStyle == null || _legendTitleStyle == null || _rowStyle == null || _legendToggleStyle == null || _lifeTitleStyle == null || _lifeHeartStyle == null ||
                 _deathTitleStyle == null || _deathBodyStyle == null || _fullScreenButtonStyle == null) return;
 
-            var y = padding;
-
             var gm = GameManager.Instance;
-            var room = gm != null ? gm.CurrentRoomName : "—";
+            var room = gm != null ? gm.CurrentRoomName : "\u2014";
             var enemies = gm != null ? gm.EnemiesRemainingInRoom : 0;
-            GUI.Label(new Rect(padding, y, 568, 94), $"Room: {room}\nEnemies: {enemies}", _labelStyle);
-            y += 98;
-
+            UpdateLegendRoomState(room);
+            DrawRoomStatusTopLeft(room, enemies);
             DrawPlayerLivesTopRight();
-
-            DrawLegend(padding, y);
-
+            DrawLegendSectionBottomLeft();
             DrawDeathScreenIfNeeded();
+        }
+
+        private void UpdateLegendRoomState(string roomName)
+        {
+            if (_hasLeftFirstRoom) return;
+            if (string.IsNullOrWhiteSpace(roomName) || string.IsNullOrWhiteSpace(firstRoomName)) return;
+            if (!string.Equals(roomName.Trim(), firstRoomName.Trim(), System.StringComparison.OrdinalIgnoreCase))
+            {
+                _hasLeftFirstRoom = true;
+                _legendExpandedAfterFirstRoom = false;
+            }
+        }
+
+        private void DrawRoomStatusTopLeft(string room, int enemies)
+        {
+            var panelRect = new Rect(padding, padding, 300, 74);
+            var lineHeight = Mathf.Max(20, fontSize + 2);
+            var x = panelRect.x + 8;
+            GUI.Label(new Rect(x, panelRect.y + 4, panelRect.width - 16, lineHeight), $"<b>Room</b>  {room}", _labelStyle);
+            GUI.Label(new Rect(x, panelRect.y + 4 + lineHeight, panelRect.width - 16, lineHeight), $"<b>Enemies</b>  {enemies}", _labelStyle);
         }
 
         private void DrawDeathScreenIfNeeded()
@@ -155,38 +185,56 @@ namespace HollowDescent.UI_Debug
             var max = health != null ? health.MaxHealth : 5;
             var cur = health != null ? health.CurrentHealth : 0;
 
-            var title = "Lives";
-            var subtitle = $"{cur} / {max}";
-            var titleW = 220;
-            var xRight = Screen.width - padding;
-            var titleX = xRight - titleW;
-            GUI.Label(new Rect(titleX, padding, titleW, 32), title, _lifeTitleStyle);
-            GUI.Label(new Rect(titleX, padding + 28, titleW, 28), subtitle, _lifeTitleStyle);
+            var panelW = 210;
+            var panelX = Screen.width - padding - panelW;
 
-            var rowY = padding + 58;
+            var title = $"Lives {cur}/{max}";
+            GUI.Label(new Rect(panelX + 8, padding + 6, panelW - 16, 24), title, _lifeTitleStyle);
+
+            var rowY = padding + 34;
             var totalW = max * (lifeHeartSize + lifeHeartSpacing) - lifeHeartSpacing;
-            var heartStartX = xRight - totalW;
+            var heartStartX = panelX + panelW - 10 - totalW;
             for (var i = 0; i < max; i++)
             {
                 GUI.contentColor = i < cur ? lifeFullColor : lifeEmptyColor;
                 var hx = heartStartX + i * (lifeHeartSize + lifeHeartSpacing);
-                GUI.Label(new Rect(hx, rowY, lifeHeartSize + 4, lifeHeartSize + 8), "\u2665", _lifeHeartStyle);
+                GUI.Label(new Rect(hx, rowY, lifeHeartSize + 2, lifeHeartSize + 4), "\u2665", _lifeHeartStyle);
             }
             GUI.contentColor = Color.white;
+        }
+
+        private void DrawLegendSectionBottomLeft()
+        {
+            if (!_hasLeftFirstRoom)
+            {
+                var fullHeight = 11 * rowHeight + 59;
+                var y = Screen.height - padding - fullHeight;
+                DrawLegend(padding, y);
+                return;
+            }
+
+            var buttonX = padding;
+            var buttonY = Screen.height - padding - 32;
+            var arrow = _legendExpandedAfterFirstRoom ? "v" : ">";
+            var buttonRect = new Rect(buttonX, buttonY, legendBoxWidth, 32);
+            if (GUI.Button(buttonRect, arrow + " Color legend", _legendToggleStyle))
+                _legendExpandedAfterFirstRoom = !_legendExpandedAfterFirstRoom;
+
+            if (_legendExpandedAfterFirstRoom)
+            {
+                var legendHeight = 11 * rowHeight + 59;
+                DrawLegend(buttonX, buttonY - 6 - legendHeight);
+            }
         }
 
         private void DrawLegend(int x, int y)
         {
             if (_legendTitleStyle == null || _rowStyle == null) return;
             var boxHeight = 11 * rowHeight + 59;
-            var rect = new Rect(x, y, legendBoxWidth, boxHeight);
-            GUI.color = new Color(0f, 0f, 0f, 0.8f);
-            GUI.DrawTexture(rect, Texture2D.whiteTexture);
-            GUI.color = Color.white;
 
             var inner = padding;
-            GUI.Label(new Rect(x + inner, y + inner, legendBoxWidth - inner * 2, 44), "Color legend", _legendTitleStyle);
-            y += 51;
+            GUI.Label(new Rect(x + inner, y + inner - 1, legendBoxWidth - inner * 2, 26), "Color legend", _legendTitleStyle);
+            y += 34;
 
             DrawLegendRow(x + inner, y, new Color(0.5f, 0.55f, 0.45f), "Safe room (floor)");
             y += rowHeight;
@@ -220,5 +268,6 @@ namespace HollowDescent.UI_Debug
             GUI.contentColor = Color.white;
             GUI.Label(textRect, text ?? "", _rowStyle);
         }
+
     }
 }
