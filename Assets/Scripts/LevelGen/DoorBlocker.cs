@@ -35,7 +35,8 @@ namespace HollowDescent.LevelGen
         [SerializeField] private float openSlideDistance = 0.8f;
         [SerializeField, Min(0.05f)] private float hiddenInWallThickness = 0.2f;
         [SerializeField, Min(0f)] private float hiddenFromAboveHeightOffset = 0.15f;
-        [SerializeField] private float transitionSeconds = 0.3f;
+        [SerializeField, Min(0.01f)] private float openTransitionSeconds = 0.45f;
+        [SerializeField, Min(0.01f)] private float closeTransitionSeconds = 0.25f;
 
         private Vector3 _leftClosedLocalPos;
         private Vector3 _rightClosedLocalPos;
@@ -148,14 +149,15 @@ namespace HollowDescent.LevelGen
 
             var targetLeft = open ? _leftOpenLocalPos : _leftClosedLocalPos;
             var targetRight = open ? _rightOpenLocalPos : _rightClosedLocalPos;
-            if (instant || transitionSeconds <= 0.001f)
+            var duration = open ? openTransitionSeconds : closeTransitionSeconds;
+            if (instant || duration <= 0.001f)
             {
                 leftLeafOrNull.localPosition = targetLeft;
                 rightLeafOrNull.localPosition = targetRight;
                 return;
             }
 
-            _moveRoutine = StartCoroutine(AnimateTo(targetLeft, targetRight, transitionSeconds));
+            _moveRoutine = StartCoroutine(AnimateTo(targetLeft, targetRight, duration));
         }
 
         private void BuildFallbackDoubleDoorLeavesIfNeeded()
