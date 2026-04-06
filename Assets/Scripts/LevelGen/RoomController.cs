@@ -89,13 +89,18 @@ namespace HollowDescent.LevelGen
         private void Start()
         {
             // Rooms should be traversable by default; combat rooms lock only once encounter starts.
-            SetDoorsOpen(true);
+            SetDoorsOpen(true, true);
         }
 
-        public void SetDoorsOpen(bool open)
+        public void SetDoorsOpen(bool open, bool instant = false)
         {
             foreach (var d in doorBlockers)
-                if (d != null) d.gameObject.SetActive(!open);
+            {
+                if (d == null) continue;
+                var blocker = d.GetComponent<DoorBlocker>();
+                if (blocker == null) blocker = d.gameObject.AddComponent<DoorBlocker>();
+                blocker.SetOpen(open, instant);
+            }
         }
 
         public void RegisterDoor(Transform doorBlocker)

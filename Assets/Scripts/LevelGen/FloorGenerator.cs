@@ -31,6 +31,12 @@ namespace HollowDescent.LevelGen
         [Header("Debug")]
         [SerializeField] private bool drawGizmos = true;
 
+        [Header("Doors")]
+        [Tooltip("Optional visual door prefab used for encounter blockers. If null, uses a graybox cube.")]
+        [SerializeField] private GameObject doorPrefabOrNull;
+        [SerializeField, Min(0.05f)] private float doorBlockerThickness = 0.2f;
+        [SerializeField, Min(0f)] private float doorTopInset = 0.15f;
+
         private bool _hasGenerated;
         private readonly List<RoomDef> _rooms = new List<RoomDef>();
         private readonly List<RoomController> _roomControllers = new List<RoomController>();
@@ -342,13 +348,20 @@ namespace HollowDescent.LevelGen
                 }
                 else
                 {
-                    var doorBlocker = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    var doorBlocker = doorPrefabOrNull != null
+                        ? Instantiate(doorPrefabOrNull)
+                        : GameObject.CreatePrimitive(PrimitiveType.Cube);
                     doorBlocker.name = "DoorBlocker";
                     doorBlocker.transform.SetParent(parent);
-                    doorBlocker.transform.position = door.Position + Vector3.up * (wallHeight * 0.5f);
-                    doorBlocker.transform.localScale = new Vector3(door.Width, wallHeight, 1f);
-                    if (door.Normal.x != 0) doorBlocker.transform.localScale = new Vector3(1f, wallHeight, door.Width);
-                    GrayboxTintUtil.Apply(doorBlocker.GetComponent<Renderer>(), new Color(0.3f, 0.25f, 0.2f));
+                    var doorHeight = Mathf.Max(0.2f, wallHeight - doorTopInset);
+                    doorBlocker.transform.position = door.Position + Vector3.up * (doorHeight * 0.5f);
+                    doorBlocker.transform.localScale = new Vector3(door.Width, doorHeight, doorBlockerThickness);
+                    if (door.Normal.x != 0) doorBlocker.transform.localScale = new Vector3(doorBlockerThickness, doorHeight, door.Width);
+                    var doorRenderer = doorBlocker.GetComponent<Renderer>();
+                    if (doorPrefabOrNull == null && doorRenderer != null)
+                        GrayboxTintUtil.Apply(doorRenderer, new Color(0.3f, 0.25f, 0.2f));
+                    if (doorBlocker.GetComponent<DoorBlocker>() == null)
+                        doorBlocker.AddComponent<DoorBlocker>();
                     BuildCorridorSegment(parent, door);
                 }
             }
@@ -907,5 +920,6 @@ namespace HollowDescent.LevelGen
         }
     }
 }
+
 
 
