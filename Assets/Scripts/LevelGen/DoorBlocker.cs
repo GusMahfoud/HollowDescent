@@ -1,5 +1,8 @@
 using System.Collections;
 using UnityEngine;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 namespace HollowDescent.LevelGen
 {
@@ -9,12 +12,21 @@ namespace HollowDescent.LevelGen
     public class DoorBlocker : MonoBehaviour
     {
         private const string DefaultDoorPrefabResourcePath = "Prefabs/Environment/DoorBlocker";
+        private const string DefaultCloseSoundResourcesPath = "Audio/close-door";
+#if UNITY_EDITOR
+        private const string EditorCloseSoundAssetPath = "Assets/Audio/close-door.mp3";
+#endif
 
         [Header("Visual")]
         [SerializeField] private Transform animatedVisualOrNull;
         [SerializeField] private GameObject visualPrefabOrNull;
         [SerializeField] private Animator animatorOrNull;
         [SerializeField] private string animatorOpenBool = "IsOpen";
+
+        [Header("Audio")]
+        [SerializeField] private AudioClip closeDoorClipOrNull;
+        [SerializeField, Range(0f, 1f)] private float closeDoorVolume = 0.9f;
+        [SerializeField, Range(0f, 1f)] private float audioSpatialBlend = 1f;
 
         [Header("Double Door Fallback")]
         [SerializeField] private bool useDoubleDoorFallback = true;
@@ -31,6 +43,7 @@ namespace HollowDescent.LevelGen
         private Vector3 _rightOpenLocalPos;
         private Coroutine _moveRoutine;
         private Collider _blockerCollider;
+        private AudioSource _audioSource;
         private bool _isOpen;
 
         private void Awake()
@@ -63,6 +76,15 @@ namespace HollowDescent.LevelGen
             _blockerCollider = GetComponent<Collider>();
             if (_blockerCollider == null)
                 _blockerCollider = gameObject.AddComponent<BoxCollider>();
+            _audioSource = GetComponent<AudioSource>();
+            if (_audioSource == null)
+                _audioSource = gameObject.AddComponent<AudioSource>();
+            _audioSource.playOnAwake = false;
+            _audioSource.spatialBlend = audioSpatialBlend;
+            _audioSource.rolloffMode = AudioRolloffMode.Linear;
+            _audioSource.maxDistance = 22f;
+            _audioSource.minDistance = 1.5f;
+            ResolveCloseDoorClipIfNeeded();
 
             // Keep legacy/baked cube blockers thin so they visually tuck into the wall.
             if (animatorOrNull == null && animatedVisualOrNull == transform)
@@ -83,12 +105,34 @@ namespace HollowDescent.LevelGen
             transform.localScale = s;
         }
 
+        private void ResolveCloseDoorClipIfNeeded()
+        {
+            if (closeDoorClipOrNull != null) return;
+            closeDoorClipOrNull = Resources.Load<AudioClip>(DefaultCloseSoundResourcesPath);
+#if UNITY_EDITOR
+            if (closeDoorClipOrNull == null)
+                closeDoorClipOrNull = AssetDatabase.LoadAssetAtPath<AudioClip>(EditorCloseSoundAssetPath);
+#endif
+        }
+
+        private void TryPlayCloseDoorSound()
+        {
+            if (_audioSource == null) return;
+            if (closeDoorClipOrNull == null)
+                ResolveCloseDoorClipIfNeeded();
+            if (closeDoorClipOrNull == null) return;
+            _audioSource.PlayOneShot(closeDoorClipOrNull, closeDoorVolume);
+        }
+
         public void SetOpen(bool open, bool instant = false)
         {
+            var wasOpen = _isOpen;
             _isOpen = open;
 
             if (_blockerCollider != null)
                 _blockerCollider.enabled = !open;
+            if (wasOpen && !open)
+                TryPlayCloseDoorSound();
 
             if (animatorOrNull != null)
             {
