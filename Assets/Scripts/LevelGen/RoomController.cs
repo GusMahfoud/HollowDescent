@@ -5,6 +5,7 @@ using HollowDescent.AI;
 using HollowDescent.Bootstrap;
 using HollowDescent.Gameplay;
 
+
 namespace HollowDescent.LevelGen
 {
     public enum RoomType
@@ -39,6 +40,7 @@ namespace HollowDescent.LevelGen
         public int shooterCount = 0;
         public int flankerCount = 1;
 
+        private bool _isShopRoom;
         private bool _encounterActive;
         private bool _encounterCleared;
         private readonly List<EnemyBase> _spawnedEnemies = new List<EnemyBase>();
@@ -88,8 +90,15 @@ namespace HollowDescent.LevelGen
 
         private void Start()
         {
+            _isShopRoom = roomName == "Shop (Safe)";
             // Rooms should be traversable by default; combat rooms lock only once encounter starts.
             SetDoorsOpen(true, true);
+        }
+
+        private void OnTriggerExit(Collider other)
+        {
+            if (_isShopRoom && other != null && other.CompareTag("Player"))
+                Gameplay.ShopSystem.Instance?.ExitShopRoom();
         }
 
         public void SetDoorsOpen(bool open, bool instant = false)
@@ -121,6 +130,8 @@ namespace HollowDescent.LevelGen
             if (!other.CompareTag("Player")) return;
             if (GameManager.Instance != null)
                 GameManager.Instance.SetCurrentRoom(roomName);
+            if (_isShopRoom)
+                Gameplay.ShopSystem.Instance?.EnterShopRoom();
             if (roomType == RoomType.Combat || roomType == RoomType.Boss)
             {
                 SetRoomEnemiesPursuitEnabled(true);
@@ -385,6 +396,10 @@ namespace HollowDescent.LevelGen
             SpawnRewardMarker();
             if (GameManager.Instance != null)
                 GameManager.Instance.SetEnemiesRemaining(0);
+            RunState.Instance?.RecordRoomCleared();
+            RunState.Instance?.AddCurrency(roomType == RoomType.Boss ? 25 : 10);
+            if (roomType == RoomType.Boss)
+                RunState.Instance?.MarkRunComplete();
         }
 
         private void SpawnRewardMarker()
@@ -395,9 +410,16 @@ namespace HollowDescent.LevelGen
             _rewardMarker.name = "RewardMarker";
             _rewardMarker.transform.position = center + Vector3.up * 0.6f;
             _rewardMarker.transform.localScale = new Vector3(0.8f, 0.8f, 0.8f);
-            _rewardMarker.GetComponent<Collider>().enabled = false;
+            var col = _rewardMarker.GetComponent<Collider>();
+            if (col != null)
+            {
+                col.enabled = true;
+                col.isTrigger = true;
+            }
             var r = _rewardMarker.GetComponent<Renderer>();
             if (r != null) GrayboxTintUtil.Apply(r, new Color(1f, 0.9f, 0.2f));
+            var pickup = _rewardMarker.AddComponent<RewardPickup>();
+            pickup.SetAmount(roomType == RoomType.Boss ? 40 : 15);
         }
 
         private void OnDrawGizmos()

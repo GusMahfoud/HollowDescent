@@ -377,7 +377,7 @@ namespace HollowDescent.LevelGen
             PlaceFloorDecals(parent, r);
             PlaceParticleEffects(parent, r);
 
-            // === STEP 4: DYNAMIC WORLDBUILDING ù random event per combat room ===
+            // === STEP 4: DYNAMIC WORLDBUILDING ÔøΩ random event per combat room ===
             if (r.Type == RoomType.Combat || r.Type == RoomType.Boss)
             {
                 var eventGo = new GameObject("RandomEvent_" + r.Name);
@@ -583,6 +583,12 @@ namespace HollowDescent.LevelGen
                 rc.RegisterSpawnPoint(spFlank.transform, true);
             }
 
+            if (r.Name == "Shop (Safe)")
+            {
+                go.AddComponent<ShopTrigger>();
+                Debug.Log($"[FloorGenerator] ShopTrigger added to GO '{go.name}' at {go.transform.position}");
+            }
+
             _roomControllers.Add(rc);
         }
 
@@ -591,7 +597,7 @@ namespace HollowDescent.LevelGen
         // =========================================================
 
         /// <summary>
-        /// Part 1 ù Prop-based storytelling.
+        /// Part 1 ÔøΩ Prop-based storytelling.
         /// Combat rooms: tipped table + scattered crates = signs of struggle.
         /// Safe rooms: neat bench + supply crate = place of rest/refuge.
         /// </summary>
@@ -602,7 +608,7 @@ namespace HollowDescent.LevelGen
 
             if (r.Type == RoomType.Combat || r.Type == RoomType.Boss)
             {
-                // Tipped table (rotated flat cube) ù suggests someone was in a hurry / struggle
+                // Tipped table (rotated flat cube) ÔøΩ suggests someone was in a hurry / struggle
                 var table = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 table.name = "Prop_TippedTable";
                 table.transform.SetParent(parent);
@@ -611,7 +617,7 @@ namespace HollowDescent.LevelGen
                 table.transform.rotation = Quaternion.Euler(0f, 15f, 52f); // tipped over
                 GrayboxTintUtil.Apply(table.GetComponent<Renderer>(), new Color(0.45f, 0.3f, 0.2f));
 
-                // Scattered crates ù debris from the struggle
+                // Scattered crates ÔøΩ debris from the struggle
                 var offsets = new Vector3[]
                 {
                     new Vector3(-halfW * 0.45f, 0.2f,  halfD * 0.55f),
@@ -641,7 +647,7 @@ namespace HollowDescent.LevelGen
             }
             else if (r.Type == RoomType.Safe || r.Type == RoomType.StartSafe)
             {
-                // Bench ù a place of rest
+                // Bench ÔøΩ a place of rest
                 var bench = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 bench.name = "Prop_Bench";
                 bench.transform.SetParent(parent);
@@ -649,7 +655,7 @@ namespace HollowDescent.LevelGen
                 bench.transform.localScale = new Vector3(2f, 0.2f, 0.5f);
                 GrayboxTintUtil.Apply(bench.GetComponent<Renderer>(), new Color(0.5f, 0.38f, 0.25f));
 
-                // Supply crate ù someone prepared for survival here
+                // Supply crate ÔøΩ someone prepared for survival here
                 var supply = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 supply.name = "Prop_SupplyCrate";
                 supply.transform.SetParent(parent);
@@ -660,7 +666,7 @@ namespace HollowDescent.LevelGen
         }
 
         /// <summary>
-        /// Part 2 ù Light and Atmosphere.
+        /// Part 2 ÔøΩ Light and Atmosphere.
         /// Combat/Boss: dim red flickering light = danger, horror.
         /// Safe/Start:  warm golden light = relief, safety.
         /// </summary>
@@ -668,7 +674,7 @@ namespace HollowDescent.LevelGen
         {
             if (r.Type == RoomType.Combat || r.Type == RoomType.Boss)
             {
-                // Main danger light ù red/orange, flickers
+                // Main danger light ÔøΩ red/orange, flickers
                 var dangerLightGo = new GameObject("AtmosLight_Danger");
                 dangerLightGo.transform.SetParent(parent);
                 dangerLightGo.transform.position = r.Center + new Vector3(halfWHelper(r) * 0.3f, wallHeight * 0.7f, 0f);
@@ -692,7 +698,7 @@ namespace HollowDescent.LevelGen
             }
             else if (r.Type == RoomType.Safe || r.Type == RoomType.StartSafe)
             {
-                // Warm golden safe light ù calm, welcoming
+                // Warm golden safe light ÔøΩ calm, welcoming
                 var safeLightGo = new GameObject("AtmosLight_Safe");
                 safeLightGo.transform.SetParent(parent);
                 safeLightGo.transform.position = r.Center + new Vector3(0f, wallHeight * 0.75f, 0f);
@@ -701,7 +707,7 @@ namespace HollowDescent.LevelGen
                 safeLight.color = new Color(1f, 0.85f, 0.5f);
                 safeLight.intensity = 2.2f;
                 safeLight.range = Mathf.Max(r.W, r.D) * 0.9f;
-                // No flicker ù safe rooms are stable
+                // No flicker ÔøΩ safe rooms are stable
             }
         }
 
@@ -709,7 +715,7 @@ namespace HollowDescent.LevelGen
         private float halfDHelper(RoomDef r) => r.D * 0.5f;
 
         /// <summary>
-        /// Part 3 ù Decals and Details.
+        /// Part 3 ÔøΩ Decals and Details.
         /// Flat quads on the floor simulating bloodstains near where enemies spawn.
         /// Also adds scorch marks near the level exit portal.
         /// </summary>
@@ -765,14 +771,14 @@ namespace HollowDescent.LevelGen
         }
 
         /// <summary>
-        /// Particle Effects ù floating dust in combat rooms (long abandonment),
+        /// Particle Effects ÔøΩ floating dust in combat rooms (long abandonment),
         /// embers/sparks near the level exit portal (magical energy).
         /// </summary>
         private void PlaceParticleEffects(Transform parent, RoomDef r)
         {
             if (r.Type == RoomType.Combat || r.Type == RoomType.Boss)
             {
-                // Dust/smoke particles drifting slowly ù room has been abandoned a long time
+                // Dust/smoke particles drifting slowly ÔøΩ room has been abandoned a long time
                 var dustGo = new GameObject("Particles_Dust");
                 dustGo.transform.SetParent(parent);
                 dustGo.transform.position = r.Center + new Vector3(0f, 1.2f, 0f);
@@ -792,17 +798,17 @@ namespace HollowDescent.LevelGen
                 main.maxParticles = 60;
                 main.simulationSpace = ParticleSystemSimulationSpace.World;
 
-                // Emission ù slow constant drizzle
+                // Emission ÔøΩ slow constant drizzle
                 var emission = dust.emission;
                 emission.rateOverTime = 8f;
 
-                // Shape ù spread across floor area so dust fills the room
+                // Shape ÔøΩ spread across floor area so dust fills the room
                 var shape = dust.shape;
                 shape.enabled = true;
                 shape.shapeType = ParticleSystemShapeType.Box;
                 shape.scale = new Vector3(r.W * 0.7f, 0.1f, r.D * 0.7f);
 
-                // Velocity over lifetime ù slow upward drift
+                // Velocity over lifetime ÔøΩ slow upward drift
                 var vel = dust.velocityOverLifetime;
                 vel.enabled = true;
                 vel.space = ParticleSystemSimulationSpace.World;
@@ -840,7 +846,7 @@ namespace HollowDescent.LevelGen
 
             if (r.Type == RoomType.LevelExit)
             {
-                // Ember/spark particles swirling around the portal ù magical energy
+                // Ember/spark particles swirling around the portal ÔøΩ magical energy
                 var emberGo = new GameObject("Particles_Embers");
                 emberGo.transform.SetParent(parent);
                 emberGo.transform.position = r.Center + new Vector3(0f, 0.5f, 0f);
@@ -859,18 +865,18 @@ namespace HollowDescent.LevelGen
                 main.maxParticles = 80;
                 main.simulationSpace = ParticleSystemSimulationSpace.World;
 
-                // Emission ù frequent bursts
+                // Emission ÔøΩ frequent bursts
                 var emission = embers.emission;
                 emission.rateOverTime = 20f;
 
-                // Shape ù cone shooting upward from portal base
+                // Shape ÔøΩ cone shooting upward from portal base
                 var shape = embers.shape;
                 shape.enabled = true;
                 shape.shapeType = ParticleSystemShapeType.Cone;
                 shape.angle = 35f;
                 shape.radius = 1.2f;
 
-                // Velocity ù swirl upward
+                // Velocity ÔøΩ swirl upward
                 var vel = embers.velocityOverLifetime;
                 vel.enabled = true;
                 vel.space = ParticleSystemSimulationSpace.World;

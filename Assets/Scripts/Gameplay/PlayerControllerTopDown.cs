@@ -13,7 +13,7 @@ namespace HollowDescent.Gameplay
         [SerializeField] private float moveSpeed = 8f;
 
         [Header("Combat")]
-        [SerializeField] private float fireRate = 0.2f;
+        [SerializeField] private float fireRate = 0.5f;
         [SerializeField] private float projectileSpeed = 18f;
         [SerializeField] private float projectileLifetime = 2f;
         [SerializeField] private float projectileRadius = 0.25f;
@@ -28,11 +28,23 @@ namespace HollowDescent.Gameplay
         private Camera _cam;
         private Rigidbody _rb;
         private Vector3 _moveInput;
+        private PlayerStatModifiers _mods;
+
+        private PlayerStatModifiers Mods
+        {
+            get
+            {
+                if (_mods == null) _mods = GetComponent<PlayerStatModifiers>();
+                return _mods;
+            }
+        }
 
         private void Awake()
         {
             _cam = Camera.main;
             _rb = GetComponent<Rigidbody>();
+            // Guard against stale serialized values from older prefabs/scenes.
+            if (fireRate < 0.4f) fireRate = 0.5f;
         }
 
         private void Update()
@@ -55,12 +67,13 @@ namespace HollowDescent.Gameplay
 
         private void FixedUpdate()
         {
+            var speed = Mods != null ? Mods.GetEffectiveMoveSpeed(moveSpeed) : moveSpeed;
             if (_rb != null)
             {
                 var horizontal = new Vector3(_moveInput.x, 0f, _moveInput.z);
                 if (horizontal.sqrMagnitude > 0.01f)
                 {
-                    var v = horizontal.normalized * moveSpeed;
+                    var v = horizontal.normalized * speed;
                     var vel = _rb.linearVelocity;
                     _rb.linearVelocity = new Vector3(v.x, vel.y, v.z);
                 }
@@ -73,7 +86,7 @@ namespace HollowDescent.Gameplay
                 return;
             }
             if (_moveInput.sqrMagnitude > 0.01f)
-                transform.position += _moveInput * (moveSpeed * Time.fixedDeltaTime);
+                transform.position += _moveInput * (speed * Time.fixedDeltaTime);
         }
 
         private bool GetCursorAimDirection(out Vector3 direction)
@@ -166,7 +179,8 @@ namespace HollowDescent.Gameplay
             aimDir.y = 0f;
             if (aimDir.sqrMagnitude < 0.01f) aimDir = new Vector3(0f, 0f, 1f);
             aimDir = aimDir.normalized;
-            _nextFireTime = Time.time + fireRate;
+            var effectiveFireRate = Mods != null ? Mods.GetEffectiveFireRate(fireRate) : fireRate;
+            _nextFireTime = Time.time + effectiveFireRate;
             var shootOrigin = transform.position + Vector3.up * projectileSpawnHeight + aimDir * 1.5f;
             var proj = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             proj.name = "Projectile";
@@ -180,7 +194,8 @@ namespace HollowDescent.Gameplay
             rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
             var p = proj.AddComponent<Projectile>();
             var hitR = Mathf.Max(0.08f, projectileRadius * 1.15f);
-            p.Init(aimDir, projectileSpeed, projectileLifetime, hitR);
+            var dmg = Mathf.Max(1, Mathf.RoundToInt(Mods != null ? Mods.GetDamageMultiplier() : 1f));
+            p.Init(aimDir, projectileSpeed, projectileLifetime, hitR, dmg);
         }
     }
 }

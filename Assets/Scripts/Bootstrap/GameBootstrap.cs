@@ -37,6 +37,8 @@ namespace HollowDescent.Bootstrap
         private void Start()
         {
             EnsureGameManager();
+            EnsureRunState();
+            EnsureShopSystem();
             EnsureLevelManager();
             EnsurePlayer();
             EnsureCamera();
@@ -54,6 +56,20 @@ namespace HollowDescent.Bootstrap
             var go = new GameObject("GameManager");
             _gm = go.AddComponent<GameManager>();
             go.AddComponent<MinimalHUD>();
+        }
+
+        private void EnsureRunState()
+        {
+            if (FindFirstObjectByType<RunState>() != null) return;
+            var go = new GameObject("RunState");
+            go.AddComponent<RunState>();
+        }
+
+        private void EnsureShopSystem()
+        {
+            if (FindFirstObjectByType<ShopSystem>() != null) return;
+            var go = new GameObject("ShopSystem");
+            go.AddComponent<ShopSystem>();
         }
 
         private void EnsureLevelManager()
@@ -104,6 +120,8 @@ namespace HollowDescent.Bootstrap
             rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
             if (player.GetComponent<PlayerHitFlash>() == null)
                 player.AddComponent<PlayerHitFlash>();
+            if (player.GetComponent<PlayerStatModifiers>() == null)
+                player.AddComponent<PlayerStatModifiers>();
         }
 
         private void EnsureCamera()

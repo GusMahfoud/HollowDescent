@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using HollowDescent.Bootstrap;
 using HollowDescent.Gameplay;
 using UnityEngine;
@@ -36,6 +37,8 @@ namespace HollowDescent.UI_Debug
         private GUIStyle _deathTitleStyle;
         private GUIStyle _deathBodyStyle;
         private GUIStyle _fullScreenButtonStyle;
+        private GUIStyle _currencyStyle;
+        private GUIStyle _buffStyle;
 
         private bool _hasLeftFirstRoom;
         private bool _legendExpandedAfterFirstRoom;
@@ -43,7 +46,7 @@ namespace HollowDescent.UI_Debug
         private void OnGUI()
         {
             if (_labelStyle == null || _legendTitleStyle == null || _rowStyle == null || _legendToggleStyle == null || _lifeTitleStyle == null || _lifeHeartStyle == null ||
-                _deathTitleStyle == null || _deathBodyStyle == null || _fullScreenButtonStyle == null)
+                _deathTitleStyle == null || _deathBodyStyle == null || _fullScreenButtonStyle == null || _currencyStyle == null || _buffStyle == null)
             {
                 GUIStyle baseStyle = null;
                 if (GUI.skin != null)
@@ -121,10 +124,25 @@ namespace HollowDescent.UI_Debug
                     fixedHeight = 52,
                     margin = new RectOffset(12, 12, 16, 16)
                 };
+                _currencyStyle = new GUIStyle(baseStyle)
+                {
+                    font = font,
+                    fontSize = Mathf.Max(14, fontSize - 2),
+                    fontStyle = FontStyle.Bold,
+                    alignment = TextAnchor.UpperLeft,
+                    normal = { textColor = new Color(1f, 0.9f, 0.3f) }
+                };
+                _buffStyle = new GUIStyle(baseStyle)
+                {
+                    font = font,
+                    fontSize = Mathf.Max(12, fontSize - 4),
+                    alignment = TextAnchor.UpperLeft,
+                    normal = { textColor = new Color(0.7f, 0.9f, 1f) }
+                };
             }
 
             if (_labelStyle == null || _legendTitleStyle == null || _rowStyle == null || _legendToggleStyle == null || _lifeTitleStyle == null || _lifeHeartStyle == null ||
-                _deathTitleStyle == null || _deathBodyStyle == null || _fullScreenButtonStyle == null) return;
+                _deathTitleStyle == null || _deathBodyStyle == null || _fullScreenButtonStyle == null || _currencyStyle == null || _buffStyle == null) return;
 
             var gm = GameManager.Instance;
             var room = gm != null ? gm.CurrentRoomName : "\u2014";
@@ -133,10 +151,14 @@ namespace HollowDescent.UI_Debug
             var legendVisible = !_hasLeftFirstRoom || _legendExpandedAfterFirstRoom;
             var hideRoomStatus = legendVisible;
             if (!hideRoomStatus)
+            {
                 DrawRoomStatusTopLeft(room, enemies);
+                DrawCurrencyDisplay();
+            }
             DrawPlayerLivesTopRight();
             DrawLegendSectionBottomLeft();
             DrawDeathScreenIfNeeded();
+            DrawVictoryScreenIfNeeded();
         }
 
         private void UpdateLegendRoomState(string roomName)
@@ -171,13 +193,54 @@ namespace HollowDescent.UI_Debug
             GUI.color = prevColor;
 
             const float boxW = 560f;
-            const float boxH = 320f;
+            const float boxH = 400f;
             GUILayout.BeginArea(new Rect((Screen.width - boxW) * 0.5f, (Screen.height - boxH) * 0.5f, boxW, boxH));
             GUILayout.Label("Run ended", _deathTitleStyle);
             GUILayout.Label("No lives remaining. Restart from Level 1 to begin a fresh run.", _deathBodyStyle);
+            GUILayout.Space(8f);
+            DrawRunStats();
             GUILayout.Space(12f);
             if (GUILayout.Button("Restart from Level 1", _fullScreenButtonStyle) && gm != null)
                 gm.RestartFromLevelOne();
+            GUILayout.EndArea();
+        }
+
+        private void DrawRunStats()
+        {
+            var rs = RunState.Instance;
+            if (rs == null || _deathBodyStyle == null) return;
+            GUILayout.Label($"Enemies Defeated: {rs.EnemiesKilled}", _deathBodyStyle);
+            GUILayout.Label($"Rooms Cleared: {rs.RoomsCleared}", _deathBodyStyle);
+            GUILayout.Label($"Damage Taken: {rs.DamageTaken}", _deathBodyStyle);
+            GUILayout.Label($"Echoes Earned: {rs.Currency}", _deathBodyStyle);
+        }
+
+        private void DrawVictoryScreenIfNeeded()
+        {
+            var rs = RunState.Instance;
+            if (rs == null || !rs.RunComplete) return;
+            var gm = GameManager.Instance;
+            if (gm != null && gm.DeathScreenOpen) return;
+
+            GUI.depth = -128;
+            var prevColor = GUI.color;
+            GUI.color = new Color(0f, 0f, 0f, 0.84f);
+            GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
+            GUI.color = prevColor;
+
+            const float boxW = 560f;
+            const float boxH = 400f;
+            GUILayout.BeginArea(new Rect((Screen.width - boxW) * 0.5f, (Screen.height - boxH) * 0.5f, boxW, boxH));
+            GUILayout.Label("Run Complete!", _deathTitleStyle);
+            GUILayout.Label("You conquered the Hollow.", _deathBodyStyle);
+            GUILayout.Space(8f);
+            DrawRunStats();
+            GUILayout.Space(12f);
+            if (GUILayout.Button("Play Again", _fullScreenButtonStyle))
+            {
+                if (gm != null) gm.RestartFromLevelOne();
+                rs.ResetForNewRun();
+            }
             GUILayout.EndArea();
         }
 
@@ -208,6 +271,32 @@ namespace HollowDescent.UI_Debug
                 GUI.Label(new Rect(hx, rowY, lifeHeartSize + 2, lifeHeartSize + 4), "\u2665", _lifeHeartStyle);
             }
             GUI.contentColor = Color.white;
+
+            DrawActiveBuffs(panelX + 8, rowY + lifeHeartSize + 8);
+        }
+
+        private void DrawCurrencyDisplay()
+        {
+            var rs = RunState.Instance;
+            if (rs == null || _currencyStyle == null) return;
+            var y = padding + 80;
+            GUI.Label(new Rect(padding + 8, y, 200, 24), $"Echoes: {rs.Currency}", _currencyStyle);
+        }
+
+        private void DrawActiveBuffs(int startX, int startY)
+        {
+            if (_buffStyle == null) return;
+            var playerGo = GameObject.FindGameObjectWithTag("Player");
+            var mods = playerGo != null ? playerGo.GetComponent<PlayerStatModifiers>() : null;
+            if (mods == null) return;
+            var buffs = mods.GetActiveBuffSummary();
+            if (buffs == null || buffs.Count == 0) return;
+            var y = startY;
+            foreach (var name in buffs)
+            {
+                GUI.Label(new Rect(startX, y, 180, 20), name, _buffStyle);
+                y += 18;
+            }
         }
 
         private void DrawLegendSectionBottomLeft()

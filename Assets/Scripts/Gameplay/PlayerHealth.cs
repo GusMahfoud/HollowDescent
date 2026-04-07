@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using HollowDescent.Bootstrap;
 
 namespace HollowDescent.Gameplay
 {
@@ -20,7 +21,7 @@ namespace HollowDescent.Gameplay
         /// <summary>Remaining life points (each hit removes one; at zero the run ends).</summary>
         public int CurrentHealth => _current;
 
-        public int MaxHealth => maxHealth;
+        public int MaxHealth => GetEffectiveMax();
 
         public bool IsDead => _isDead;
 
@@ -29,7 +30,25 @@ namespace HollowDescent.Gameplay
 
         private void Awake()
         {
-            _current = maxHealth;
+            _current = GetEffectiveMax();
+        }
+
+        private int GetEffectiveMax()
+        {
+            var mods = GetComponent<PlayerStatModifiers>();
+            return mods != null ? mods.GetEffectiveMaxHealth(maxHealth) : maxHealth;
+        }
+
+        /// <summary>
+        /// Recalculate max HP after a buff is applied mid-run. Heals the bonus amount.
+        /// </summary>
+        public void RecalculateMaxHealth()
+        {
+            var oldMax = maxHealth;
+            var newMax = GetEffectiveMax();
+            var bonus = newMax - oldMax;
+            if (bonus > 0)
+                _current = Mathf.Min(_current + bonus, newMax);
         }
 
         /// <returns>True if at least one point of damage was applied.</returns>
@@ -39,6 +58,7 @@ namespace HollowDescent.Gameplay
             if (Time.unscaledTime < _invulnerableUntilUnscaledTime) return false;
             _current = Mathf.Max(0, _current - amount);
             _invulnerableUntilUnscaledTime = Time.unscaledTime + hitInvulnerabilitySeconds;
+            RunState.Instance?.RecordDamageTaken(amount);
             OnDamaged?.Invoke();
             if (_current <= 0)
                 Die();
@@ -51,7 +71,7 @@ namespace HollowDescent.Gameplay
         public void ReviveForNewRun()
         {
             _isDead = false;
-            _current = maxHealth;
+            _current = GetEffectiveMax();
             _invulnerableUntilUnscaledTime = Time.unscaledTime + hitInvulnerabilitySeconds;
             var ctrl = GetComponent<PlayerControllerTopDown>();
             if (ctrl != null) ctrl.enabled = true;

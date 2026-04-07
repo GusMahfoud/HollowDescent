@@ -56,6 +56,7 @@ namespace HollowDescent.Bootstrap
             DeathScreenOpen = false;
             Time.timeScale = 1f;
             remainingLives = TotalLives;
+            RunState.Instance?.ResetForNewRun();
             var playerGo = GameObject.FindGameObjectWithTag("Player");
             var health = playerGo != null ? playerGo.GetComponent<PlayerHealth>() : null;
             health?.ReviveForNewRun();

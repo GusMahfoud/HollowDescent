@@ -14,17 +14,19 @@ namespace HollowDescent.Gameplay
         private float _lifetime;
         private float _spawnTime;
         private float _hitRadius = 0.35f;
+        private int _damage = 1;
         private Collider _myCollider;
         private Rigidbody _rb;
         private readonly Collider[] _overlapScratch = new Collider[32];
         private const int CastMask = ~0;
 
-        public void Init(Vector3 direction, float speed, float lifetime, float hitRadius)
+        public void Init(Vector3 direction, float speed, float lifetime, float hitRadius, int damage = 1)
         {
             _direction = direction.normalized;
             _speed = speed;
             _lifetime = lifetime;
             _hitRadius = Mathf.Clamp(hitRadius, 0.06f, 3f);
+            _damage = Mathf.Max(1, damage);
             _spawnTime = Time.time;
             _myCollider = GetComponent<Collider>();
             _rb = GetComponent<Rigidbody>();
@@ -71,7 +73,7 @@ namespace HollowDescent.Gameplay
                 var enemy = ResolveEnemy(c);
                 if (enemy != null)
                 {
-                    enemy.TakeDamage(1);
+                    enemy.TakeDamage(_damage);
                     Destroy(gameObject);
                     return true;
                 }
@@ -112,7 +114,7 @@ namespace HollowDescent.Gameplay
                 var enemy = ResolveEnemy(h.collider);
                 if (enemy != null)
                 {
-                    enemy.TakeDamage(1);
+                    enemy.TakeDamage(_damage);
                     Destroy(gameObject);
                     return true;
                 }

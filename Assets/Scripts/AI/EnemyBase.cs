@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using UnityEngine;
+using HollowDescent.Bootstrap;
 using HollowDescent.Gameplay;
 
 namespace HollowDescent.AI
@@ -62,6 +63,7 @@ namespace HollowDescent.AI
 
         protected virtual void Die()
         {
+            RunState.Instance?.RecordKill();
             OnDeath?.Invoke(this);
             Destroy(gameObject);
         }
