@@ -1,6 +1,7 @@
 using UnityEngine;
 using HollowDescent.Gameplay;
 using HollowDescent.LevelGen;
+using HollowDescent.AI;
 using HollowDescent.UI_Debug;
 
 namespace HollowDescent.Bootstrap
@@ -88,12 +89,13 @@ namespace HollowDescent.Bootstrap
             health?.ReviveForNewRun();
             if (playerGo != null) playerGo.SetActive(false);
 
-            // Destroy the level
-            var levelHolder = GameObject.Find("Level");
-            if (levelHolder != null)
+            // Destroy all loaded level geometry (both Level/* and loose LevelRoot objects).
+            LevelManager.ClearLoadedLevelImmediate();
+            var enemies = FindObjectsByType<EnemyBase>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            foreach (var enemy in enemies)
             {
-                for (var i = levelHolder.transform.childCount - 1; i >= 0; i--)
-                    DestroyImmediate(levelHolder.transform.GetChild(i).gameObject);
+                if (enemy != null)
+                    DestroyImmediate(enemy.gameObject);
             }
 
             currentRoomName = "Start (Safe)";

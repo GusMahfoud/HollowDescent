@@ -48,6 +48,14 @@ namespace HollowDescent.Bootstrap
             _floorGenerator = gen;
         }
 
+        public static void ClearLoadedLevelImmediate()
+        {
+            var levelHolder = GameObject.Find("Level");
+            if (levelHolder != null)
+                WipeLevelChildrenImmediate(levelHolder.transform);
+            WipeLooseLevelRootsImmediate(levelHolder != null ? levelHolder.transform : null);
+        }
+
         /// <summary>
         /// Moves the player to PlayerStart under the given level root (or current cache / Find).
         /// </summary>
@@ -77,6 +85,7 @@ namespace HollowDescent.Bootstrap
             // Destroy() is end-of-frame: instantiating the next level in the same frame leaves two
             // roots under "Level" and breaks transitions. Clear children immediately.
             WipeLevelChildrenImmediate(levelHolder.transform);
+            WipeLooseLevelRootsImmediate(levelHolder.transform);
             _levelRoot = null;
 
             if (TrySpawnBakedLevel(levelIndex, levelHolder))
@@ -108,6 +117,18 @@ namespace HollowDescent.Bootstrap
             {
                 var child = levelTransform.GetChild(i).gameObject;
                 DestroyImmediate(child);
+            }
+        }
+
+        private static void WipeLooseLevelRootsImmediate(Transform levelHolder)
+        {
+            var looseRoots = GameObject.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            foreach (var t in looseRoots)
+            {
+                if (t == null) continue;
+                if (!string.Equals(t.name, "LevelRoot", System.StringComparison.Ordinal)) continue;
+                if (levelHolder != null && t.IsChildOf(levelHolder)) continue;
+                DestroyImmediate(t.gameObject);
             }
         }
 

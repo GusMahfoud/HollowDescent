@@ -1,5 +1,6 @@
 using System.Collections;
 using UnityEngine;
+using HollowDescent.Bootstrap;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -26,7 +27,7 @@ namespace HollowDescent.LevelGen
         [Header("Audio")]
         [SerializeField] private AudioClip closeDoorClipOrNull;
         [SerializeField, Range(0f, 1f)] private float closeDoorVolume = 0.9f;
-        [SerializeField, Range(0f, 1f)] private float audioSpatialBlend = 1f;
+        [SerializeField, Range(0f, 1f)] private float audioSpatialBlend = 0f;
 
         [Header("Double Door Fallback")]
         [SerializeField] private bool useDoubleDoorFallback = true;
@@ -81,7 +82,8 @@ namespace HollowDescent.LevelGen
             if (_audioSource == null)
                 _audioSource = gameObject.AddComponent<AudioSource>();
             _audioSource.playOnAwake = false;
-            _audioSource.spatialBlend = audioSpatialBlend;
+            // Keep door SFX clearly audible over music regardless of camera distance.
+            _audioSource.spatialBlend = 0f;
             _audioSource.rolloffMode = AudioRolloffMode.Linear;
             _audioSource.maxDistance = 22f;
             _audioSource.minDistance = 1.5f;
@@ -110,10 +112,28 @@ namespace HollowDescent.LevelGen
         {
             if (closeDoorClipOrNull != null) return;
             closeDoorClipOrNull = Resources.Load<AudioClip>(DefaultCloseSoundResourcesPath);
+            if (closeDoorClipOrNull == null)
+            {
+                var allAudio = Resources.LoadAll<AudioClip>("Audio");
+                foreach (var clip in allAudio)
+                {
+                    if (clip == null || string.IsNullOrWhiteSpace(clip.name)) continue;
+                    if (clip.name.IndexOf("close-door", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        clip.name.IndexOf("close_door", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        closeDoorClipOrNull = clip;
+                        break;
+                    }
+                }
+            }
+            if (closeDoorClipOrNull == null)
+                closeDoorClipOrNull = GameBootstrap.ResolveDoorCloseClipGlobal();
 #if UNITY_EDITOR
             if (closeDoorClipOrNull == null)
                 closeDoorClipOrNull = AssetDatabase.LoadAssetAtPath<AudioClip>(EditorCloseSoundAssetPath);
 #endif
+            if (closeDoorClipOrNull == null)
+                Debug.LogWarning("[DoorBlocker] Missing close-door clip. Put it at Resources/Audio/close-door or assign DoorBlocker.closeDoorClipOrNull.");
         }
 
         private void TryPlayCloseDoorSound()

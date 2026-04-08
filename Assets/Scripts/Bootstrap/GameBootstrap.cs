@@ -21,6 +21,7 @@ namespace HollowDescent.Bootstrap
         private const string WitnessResourcePath = "Prefabs/Characters/NarrativeWitnessNPC";
         private const string Level1ResourcePath = "Prefabs/Levels/Level_01";
         private const string BackgroundMusicResourcePath = "Audio/background-music";
+        private const string DoorCloseSoundResourcePath = "Audio/close-door";
 
         [Header("Optional: leave null to use Resources path or runtime fallback")]
         [SerializeField] private GameObject playerPrefabOrNull;
@@ -32,6 +33,7 @@ namespace HollowDescent.Bootstrap
         [Header("Audio")]
         [SerializeField] private AudioClip backgroundMusicClipOrNull;
         [SerializeField, Range(0f, 1f)] private float backgroundMusicVolume = 0.12f;
+        [SerializeField] private AudioClip doorCloseSfxClipOrNull;
         [Header("Startup Menu")]
         [SerializeField] private bool showStartupMenu = true;
         [SerializeField] private string startupGameTitle = "Hollow Descent";
@@ -425,6 +427,38 @@ namespace HollowDescent.Bootstrap
             backgroundMusicClipOrNull = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/background-music.mp3");
 #endif
             return backgroundMusicClipOrNull;
+        }
+
+        public static AudioClip ResolveDoorCloseClipGlobal()
+        {
+            var bootstrap = FindFirstObjectByType<GameBootstrap>(FindObjectsInactive.Include);
+            if (bootstrap != null)
+            {
+                var fromBootstrap = bootstrap.ResolveDoorCloseClip();
+                if (fromBootstrap != null) return fromBootstrap;
+            }
+
+            var fromResources = Resources.Load<AudioClip>(DoorCloseSoundResourcePath);
+            if (fromResources != null) return fromResources;
+
+#if UNITY_EDITOR
+            return AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/close-door.mp3");
+#else
+            return null;
+#endif
+        }
+
+        private AudioClip ResolveDoorCloseClip()
+        {
+            if (doorCloseSfxClipOrNull != null) return doorCloseSfxClipOrNull;
+
+            doorCloseSfxClipOrNull = Resources.Load<AudioClip>(DoorCloseSoundResourcePath);
+            if (doorCloseSfxClipOrNull != null) return doorCloseSfxClipOrNull;
+
+#if UNITY_EDITOR
+            doorCloseSfxClipOrNull = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/close-door.mp3");
+#endif
+            return doorCloseSfxClipOrNull;
         }
     }
 }

@@ -257,6 +257,7 @@ namespace HollowDescent.LevelGen
             if (prefab != null)
             {
                 var go = Instantiate(prefab, pos, Quaternion.identity);
+                go.transform.SetParent(transform, true);
                 var eb = go.GetComponent<EnemyBase>();
                 if (eb != null)
                 {
@@ -274,6 +275,7 @@ namespace HollowDescent.LevelGen
             var enemy = primitive.GetComponent<EnemyBase>();
             if (enemy != null)
             {
+                primitive.transform.SetParent(transform, true);
                 enemy.OnDeath += OnEnemyDied;
                 ApplySpawnVariety(enemy, shooter, flanker);
             }

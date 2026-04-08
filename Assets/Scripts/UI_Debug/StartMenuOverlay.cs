@@ -29,6 +29,12 @@ namespace HollowDescent.UI_Debug
         [SerializeField] private Button quitButtonOrNull;
         [SerializeField] private Text startButtonTextOrNull;
         [SerializeField] private TMP_Text startButtonTmpTextOrNull;
+        [SerializeField] private GameObject controlsPanelOrNull;
+        [SerializeField] private Text controlsTextOrNull;
+        [SerializeField] private TMP_Text controlsTmpTextOrNull;
+        [SerializeField] private Button controlsContinueButtonOrNull;
+        [SerializeField] private Text controlsContinueTextOrNull;
+        [SerializeField] private TMP_Text controlsContinueTmpTextOrNull;
 
         [Header("Styling")]
         [SerializeField] private string defaultSubtitle = "Descend if you dare.";
@@ -36,9 +42,15 @@ namespace HollowDescent.UI_Debug
         [SerializeField] private Color titlePulseHigh = new Color(1f, 1f, 1f);
         [SerializeField] private float titlePulseSpeed = 1.8f;
         [SerializeField] private bool forceOpaqueBackdrop = true;
+        [Header("Controls Popup")]
+        [SerializeField] private bool showControlsBeforeStart = true;
+        [SerializeField, TextArea(3, 8)] private string controlsDescription =
+            "Controls\n\nWASD - Move\nMouse - Aim\nLeft Click - Shoot\nEsc - Shop (in safe/shop rooms)\n\nTip: Clear rooms to open doors and collect rewards.";
+        [SerializeField] private string controlsContinueLabel = "Continue";
 
         private Action _onStart;
         private float _pulseTime;
+        private bool _waitingForControlsContinue;
 
         public static StartMenuOverlay Show(string title, string buttonText, Action onStart)
         {
@@ -90,6 +102,11 @@ namespace HollowDescent.UI_Debug
                 quitButtonOrNull.onClick.RemoveListener(OnQuitClicked);
                 quitButtonOrNull.onClick.AddListener(OnQuitClicked);
             }
+            if (controlsContinueButtonOrNull != null)
+            {
+                controlsContinueButtonOrNull.onClick.RemoveListener(OnControlsContinueClicked);
+                controlsContinueButtonOrNull.onClick.AddListener(OnControlsContinueClicked);
+            }
         }
 
         private void OnDisable()
@@ -98,6 +115,8 @@ namespace HollowDescent.UI_Debug
                 startButtonOrNull.onClick.RemoveListener(OnStartClicked);
             if (quitButtonOrNull != null)
                 quitButtonOrNull.onClick.RemoveListener(OnQuitClicked);
+            if (controlsContinueButtonOrNull != null)
+                controlsContinueButtonOrNull.onClick.RemoveListener(OnControlsContinueClicked);
         }
 
         private void Configure(string title, string buttonText, Action onStart)
@@ -113,6 +132,12 @@ namespace HollowDescent.UI_Debug
             if (subtitleTmpOrNull != null) subtitleTmpOrNull.text = defaultSubtitle;
             if (startButtonTextOrNull != null) startButtonTextOrNull.text = resolvedButton;
             if (startButtonTmpTextOrNull != null) startButtonTmpTextOrNull.text = resolvedButton;
+            if (controlsTextOrNull != null) controlsTextOrNull.text = controlsDescription;
+            if (controlsTmpTextOrNull != null) controlsTmpTextOrNull.text = controlsDescription;
+            if (controlsContinueTextOrNull != null) controlsContinueTextOrNull.text = controlsContinueLabel;
+            if (controlsContinueTmpTextOrNull != null) controlsContinueTmpTextOrNull.text = controlsContinueLabel;
+            _waitingForControlsContinue = false;
+            SetControlsPopupVisible(false);
             EnsureBackdropOpacity();
         }
 
@@ -127,6 +152,31 @@ namespace HollowDescent.UI_Debug
         }
 
         private void OnStartClicked()
+        {
+            if (showControlsBeforeStart)
+            {
+                EnsureControlsPopupBuilt();
+                if (controlsPanelOrNull != null)
+                {
+                    _waitingForControlsContinue = true;
+                    SetMainMenuInteractable(false);
+                    SetControlsPopupVisible(true);
+                    return;
+                }
+            }
+
+            StartRunNow();
+        }
+
+        private void OnControlsContinueClicked()
+        {
+            if (!_waitingForControlsContinue) return;
+            _waitingForControlsContinue = false;
+            SetControlsPopupVisible(false);
+            StartRunNow();
+        }
+
+        private void StartRunNow()
         {
             var cb = _onStart;
             CloseAllMenus();
@@ -207,6 +257,159 @@ namespace HollowDescent.UI_Debug
                 subtitleTextOrNull = FindByNameInChildren<Text>("Subtitle");
             if (subtitleTmpOrNull == null)
                 subtitleTmpOrNull = FindByNameInChildren<TMP_Text>("Subtitle");
+
+            if (controlsPanelOrNull == null)
+            {
+                var controlsPanelImage = FindByNameInChildren<Image>("ControlsPanel");
+                if (controlsPanelImage != null)
+                    controlsPanelOrNull = controlsPanelImage.gameObject;
+            }
+            if (controlsTextOrNull == null)
+                controlsTextOrNull = FindByNameInChildren<Text>("ControlsText");
+            if (controlsTmpTextOrNull == null)
+                controlsTmpTextOrNull = FindByNameInChildren<TMP_Text>("ControlsText");
+            if (controlsContinueButtonOrNull == null)
+                controlsContinueButtonOrNull = FindByNameInChildren<Button>("ControlsContinueButton");
+            if (controlsContinueButtonOrNull != null)
+            {
+                if (controlsContinueTextOrNull == null)
+                    controlsContinueTextOrNull = controlsContinueButtonOrNull.GetComponentInChildren<Text>(true);
+                if (controlsContinueTmpTextOrNull == null)
+                    controlsContinueTmpTextOrNull = controlsContinueButtonOrNull.GetComponentInChildren<TMP_Text>(true);
+            }
+        }
+
+        private void SetMainMenuInteractable(bool interactable)
+        {
+            if (startButtonOrNull != null) startButtonOrNull.interactable = interactable;
+            if (quitButtonOrNull != null) quitButtonOrNull.interactable = interactable;
+        }
+
+        private void SetControlsPopupVisible(bool visible)
+        {
+            if (controlsPanelOrNull != null)
+                controlsPanelOrNull.SetActive(visible);
+            SetMainMenuInteractable(!visible);
+            if (startButtonOrNull != null) startButtonOrNull.gameObject.SetActive(!visible);
+            if (quitButtonOrNull != null) quitButtonOrNull.gameObject.SetActive(!visible);
+        }
+
+        private void EnsureControlsPopupBuilt()
+        {
+            if (controlsPanelOrNull != null)
+            {
+                ApplyControlsPopupLayout();
+                return;
+            }
+
+            var canvas = GetComponentInParent<Canvas>();
+            if (canvas == null) return;
+
+            var panelGo = new GameObject("ControlsPanel", typeof(RectTransform), typeof(Image));
+            panelGo.transform.SetParent(canvas.transform, false);
+            controlsPanelOrNull = panelGo;
+
+            var panelRect = panelGo.GetComponent<RectTransform>();
+            panelRect.anchorMin = new Vector2(0.5f, 0.5f);
+            panelRect.anchorMax = new Vector2(0.5f, 0.5f);
+            panelRect.pivot = new Vector2(0.5f, 0.5f);
+            panelRect.sizeDelta = new Vector2(760f, 420f);
+            panelRect.anchoredPosition = Vector2.zero;
+
+            var panelImage = panelGo.GetComponent<Image>();
+            panelImage.color = new Color(0.05f, 0.06f, 0.08f, 0.94f);
+
+            var textGo = new GameObject("ControlsText", typeof(RectTransform), typeof(TextMeshProUGUI));
+            textGo.transform.SetParent(panelGo.transform, false);
+            controlsTmpTextOrNull = textGo.GetComponent<TMP_Text>();
+            if (controlsTmpTextOrNull == null) return;
+            controlsTmpTextOrNull.text = controlsDescription;
+            controlsTmpTextOrNull.alignment = TextAlignmentOptions.TopLeft;
+            controlsTmpTextOrNull.fontSize = 16f;
+            controlsTmpTextOrNull.enableWordWrapping = true;
+            controlsTmpTextOrNull.lineSpacing = 4f;
+            controlsTmpTextOrNull.color = new Color(0.95f, 0.96f, 0.98f, 1f);
+            var textRect = textGo.GetComponent<RectTransform>();
+            textRect.anchorMin = new Vector2(0f, 0f);
+            textRect.anchorMax = new Vector2(1f, 1f);
+            textRect.offsetMin = new Vector2(36f, 96f);
+            textRect.offsetMax = new Vector2(-36f, -34f);
+
+            var buttonGo = new GameObject("ControlsContinueButton", typeof(RectTransform), typeof(Image), typeof(Button));
+            buttonGo.transform.SetParent(panelGo.transform, false);
+            controlsContinueButtonOrNull = buttonGo.GetComponent<Button>();
+            var buttonImage = buttonGo.GetComponent<Image>();
+            buttonImage.color = new Color(0.26f, 0.46f, 0.31f, 1f);
+            var buttonRect = buttonGo.GetComponent<RectTransform>();
+            buttonRect.anchorMin = new Vector2(0.5f, 0f);
+            buttonRect.anchorMax = new Vector2(0.5f, 0f);
+            buttonRect.pivot = new Vector2(0.5f, 0f);
+            buttonRect.sizeDelta = new Vector2(220f, 52f);
+            buttonRect.anchoredPosition = new Vector2(0f, 22f);
+
+            var buttonLabelGo = new GameObject("Text (TMP)", typeof(RectTransform), typeof(TextMeshProUGUI));
+            buttonLabelGo.transform.SetParent(buttonGo.transform, false);
+            controlsContinueTmpTextOrNull = buttonLabelGo.GetComponent<TMP_Text>();
+            if (controlsContinueTmpTextOrNull == null) return;
+            controlsContinueTmpTextOrNull.text = controlsContinueLabel;
+            controlsContinueTmpTextOrNull.alignment = TextAlignmentOptions.Center;
+            controlsContinueTmpTextOrNull.fontSize = 22f;
+            controlsContinueTmpTextOrNull.color = Color.white;
+            var buttonLabelRect = buttonLabelGo.GetComponent<RectTransform>();
+            buttonLabelRect.anchorMin = Vector2.zero;
+            buttonLabelRect.anchorMax = Vector2.one;
+            buttonLabelRect.offsetMin = Vector2.zero;
+            buttonLabelRect.offsetMax = Vector2.zero;
+
+            controlsContinueButtonOrNull.onClick.RemoveListener(OnControlsContinueClicked);
+            controlsContinueButtonOrNull.onClick.AddListener(OnControlsContinueClicked);
+            ApplyControlsPopupLayout();
+            SetControlsPopupVisible(false);
+        }
+
+        private void ApplyControlsPopupLayout()
+        {
+            if (controlsPanelOrNull == null) return;
+
+            var panelRect = controlsPanelOrNull.GetComponent<RectTransform>();
+            if (panelRect != null)
+            {
+                panelRect.anchorMin = new Vector2(0.5f, 0.5f);
+                panelRect.anchorMax = new Vector2(0.5f, 0.5f);
+                panelRect.pivot = new Vector2(0.5f, 0.5f);
+                panelRect.sizeDelta = new Vector2(760f, 420f);
+                panelRect.anchoredPosition = Vector2.zero;
+            }
+
+            var panelImage = controlsPanelOrNull.GetComponent<Image>();
+            if (panelImage != null)
+                panelImage.color = new Color(0.05f, 0.06f, 0.08f, 0.94f);
+
+            if (controlsTmpTextOrNull != null)
+            {
+                controlsTmpTextOrNull.fontSize = 16f;
+                controlsTmpTextOrNull.enableWordWrapping = true;
+                controlsTmpTextOrNull.lineSpacing = 4f;
+                controlsTmpTextOrNull.alignment = TextAlignmentOptions.TopLeft;
+                var tr = controlsTmpTextOrNull.rectTransform;
+                tr.anchorMin = new Vector2(0f, 0f);
+                tr.anchorMax = new Vector2(1f, 1f);
+                tr.offsetMin = new Vector2(36f, 96f);
+                tr.offsetMax = new Vector2(-36f, -34f);
+            }
+
+            if (controlsContinueButtonOrNull != null)
+            {
+                var br = controlsContinueButtonOrNull.GetComponent<RectTransform>();
+                if (br != null)
+                {
+                    br.anchorMin = new Vector2(0.5f, 0f);
+                    br.anchorMax = new Vector2(0.5f, 0f);
+                    br.pivot = new Vector2(0.5f, 0f);
+                    br.sizeDelta = new Vector2(220f, 52f);
+                    br.anchoredPosition = new Vector2(0f, 22f);
+                }
+            }
         }
 
         private T FindByNameInChildren<T>(string name) where T : Component

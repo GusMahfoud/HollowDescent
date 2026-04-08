@@ -429,8 +429,9 @@ MonoBehaviour:
   floorGeneratorOrNull: {fileID: 0}
   gameManagerOrNull: {fileID: 0}
   finalRoomNarrativeClip: {fileID: 0}
-  backgroundMusicClipOrNull: {fileID: 0}
+  backgroundMusicClipOrNull: {fileID: 8300000, guid: 2f8295207b5ad3d4f982bc3f31b7dbec, type: 3}
   backgroundMusicVolume: 0.35
+  doorCloseSfxClipOrNull: {fileID: 8300000, guid: 10ce616c8dc1a0e498a8784a2ad98b19, type: 3}
   showStartupMenu: 1
   startupGameTitle: Hollow Descent
   startupButtonText: Start Game
@@ -472,6 +473,7 @@ MonoBehaviour:
   subtitleTextOrNull: {fileID: 0}
   subtitleTmpOrNull: {fileID: 0}
   startButtonOrNull: {fileID: 786020068}
+  quitButtonOrNull: {fileID: 1289026882}
   startButtonTextOrNull: {fileID: 0}
   startButtonTmpTextOrNull: {fileID: 0}
   defaultSubtitle: Descend if you dare.
@@ -479,6 +481,17 @@ MonoBehaviour:
   titlePulseHigh: {r: 1, g: 1, b: 1, a: 1}
   titlePulseSpeed: 1.8
   forceOpaqueBackdrop: 1
+--- !u!114 &1289026882 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 4296230101233011796, guid: 16353bc47af8c6d4a985aba82a801084, type: 3}
+  m_PrefabInstance: {fileID: 8257903152924647409}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Button
 --- !u!1 &1822925643
 GameObject:
   m_ObjectHideFlags: 0
@@ -585,6 +598,30 @@ PrefabInstance:
       propertyPath: m_AdditionalShaderChannelsFlag
       value: 25
       objectReference: {fileID: 0}
+    - target: {fileID: 3789569101337204459, guid: 16353bc47af8c6d4a985aba82a801084, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3789569101337204459, guid: 16353bc47af8c6d4a985aba82a801084, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3789569101337204459, guid: 16353bc47af8c6d4a985aba82a801084, type: 3}
+      propertyPath: m_AnchorMin.x
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3789569101337204459, guid: 16353bc47af8c6d4a985aba82a801084, type: 3}
+      propertyPath: m_AnchorMin.y
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3789569101337204459, guid: 16353bc47af8c6d4a985aba82a801084, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: -19
+      objectReference: {fileID: 0}
+    - target: {fileID: 3789569101337204459, guid: 16353bc47af8c6d4a985aba82a801084, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: -21
+      objectReference: {fileID: 0}
     - target: {fileID: 3955000258456380349, guid: 16353bc47af8c6d4a985aba82a801084, type: 3}
       propertyPath: m_Pivot.x
       value: 0
@@ -666,8 +703,20 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8113062288946417325, guid: 16353bc47af8c6d4a985aba82a801084, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8113062288946417325, guid: 16353bc47af8c6d4a985aba82a801084, type: 3}
+      propertyPath: m_AnchorMin.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8113062288946417325, guid: 16353bc47af8c6d4a985aba82a801084, type: 3}
       propertyPath: m_AnchoredPosition.x
       value: -36
+      objectReference: {fileID: 0}
+    - target: {fileID: 8113062288946417325, guid: 16353bc47af8c6d4a985aba82a801084, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 67
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
