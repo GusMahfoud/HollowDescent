@@ -586,7 +586,21 @@ namespace HollowDescent.LevelGen
             if (r.Name == "Shop (Safe)")
             {
                 go.AddComponent<ShopTrigger>();
-                Debug.Log($"[FloorGenerator] ShopTrigger added to GO '{go.name}' at {go.transform.position}");
+            }
+
+            // Narrative text triggers for key rooms
+            string[] narrativeLines = null;
+            if (r.Name == "Start (Safe)")
+                narrativeLines = new[] { "The air hums. The Hollow remembers you." };
+            else if (r.Name == "L2 Start")
+                narrativeLines = new[] { "Deeper. The walls shift when you're not looking." };
+            else if (r.Name == "L2 Boss")
+                narrativeLines = new[] { "This one was never meant to be contained." };
+
+            if (narrativeLines != null)
+            {
+                var nt = go.AddComponent<NarrativeTriggerEvent>();
+                nt.SetLines(narrativeLines);
             }
 
             _roomControllers.Add(rc);

@@ -1,6 +1,7 @@
 using UnityEngine;
 using HollowDescent.Gameplay;
 using HollowDescent.LevelGen;
+using HollowDescent.UI_Debug;
 
 namespace HollowDescent.Bootstrap
 {
@@ -21,6 +22,7 @@ namespace HollowDescent.Bootstrap
         public int RemainingLives => Mathf.Clamp(remainingLives, 0, TotalLives);
         public string CurrentRoomName => currentRoomName;
         public int EnemiesRemainingInRoom => enemiesRemainingInRoom;
+        public string EnemyComposition { get; private set; } = "";
 
         public bool DeathScreenOpen { get; private set; }
 
@@ -32,6 +34,11 @@ namespace HollowDescent.Bootstrap
         public void SetEnemiesRemaining(int count)
         {
             enemiesRemainingInRoom = Mathf.Max(0, count);
+        }
+
+        public void SetEnemyComposition(string composition)
+        {
+            EnemyComposition = composition ?? "";
         }
 
         public void NotifyPlayerDied()
@@ -64,6 +71,45 @@ namespace HollowDescent.Bootstrap
                 LevelManager.Instance.LoadLevel(1);
             currentRoomName = "Start (Safe)";
             enemiesRemainingInRoom = 0;
+        }
+
+        /// <summary>
+        /// Full reset: restore state, destroy level, show start menu.
+        /// </summary>
+        public void ReturnToMainMenu()
+        {
+            DeathScreenOpen = false;
+            Time.timeScale = 1f;
+            remainingLives = TotalLives;
+            RunState.Instance?.ResetForNewRun();
+
+            var playerGo = GameObject.FindGameObjectWithTag("Player");
+            var health = playerGo != null ? playerGo.GetComponent<PlayerHealth>() : null;
+            health?.ReviveForNewRun();
+            if (playerGo != null) playerGo.SetActive(false);
+
+            // Destroy the level
+            var levelHolder = GameObject.Find("Level");
+            if (levelHolder != null)
+            {
+                for (var i = levelHolder.transform.childCount - 1; i >= 0; i--)
+                    DestroyImmediate(levelHolder.transform.GetChild(i).gameObject);
+            }
+
+            currentRoomName = "Start (Safe)";
+            enemiesRemainingInRoom = 0;
+            EnemyComposition = "";
+
+            // Re-show the start menu — it will call BootstrapGame on click
+            var bootstrap = FindFirstObjectByType<GameBootstrap>();
+            if (bootstrap != null)
+            {
+                bootstrap.ShowMainMenu();
+                return;
+            }
+
+            // Fallback if bootstrap isn't present.
+            StartMenuOverlay.Show("Hollow Descent", "Start Game", RestartFromLevelOne);
         }
 
         private void RespawnCurrentLevelFromDeath()

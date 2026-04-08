@@ -228,6 +228,12 @@ namespace HollowDescent.LevelGen
             }
 
             UpdateGMEnemyCount();
+            // Set enemy composition for HUD display
+            var parts = new List<string>();
+            if (chaserCount > 0) parts.Add($"{chaserCount} Chaser{(chaserCount > 1 ? "s" : "")}");
+            if (shooterCount > 0) parts.Add($"{shooterCount} Shooter{(shooterCount > 1 ? "s" : "")}");
+            if (flankerCount > 0) parts.Add($"{flankerCount} Flanker{(flankerCount > 1 ? "s" : "")}");
+            GameManager.Instance?.SetEnemyComposition(string.Join(", ", parts));
             FinishEncounterIfNoEnemiesSpawned();
         }
 
@@ -281,16 +287,17 @@ namespace HollowDescent.LevelGen
             var seed = eb.gameObject.GetInstanceID() ^ (roomName != null ? roomName.GetHashCode() : 0);
             var rng = new System.Random(seed);
             var bossBump = roomType == RoomType.Boss ? rng.Next(0, 2) : 0;
+            var levelBump = (LevelManager.Instance != null && LevelManager.Instance.CurrentLevel >= 2) ? 1 : 0;
 
             if (flanker && eb is EnemyFlanker ef)
             {
-                eb.ApplyRuntimeCombatStats(rng.Next(2, 5) + bossBump, rng.Next(1, 3));
+                eb.ApplyRuntimeCombatStats(rng.Next(2, 5) + bossBump + levelBump, rng.Next(1, 3));
                 ef.ApplyMovementProfile(rng.Next(38, 63) / 10f, rng.Next(35, 105) / 100f);
                 MaybeTintRuntimePrimitive(eb, rng, flanker, shooter);
             }
             else if (shooter && eb is EnemyShooter es)
             {
-                eb.ApplyRuntimeCombatStats(rng.Next(2, 4) + bossBump, rng.Next(1, 3));
+                eb.ApplyRuntimeCombatStats(rng.Next(2, 4) + bossBump + levelBump, rng.Next(1, 3));
                 es.ApplyCombatProfile(
                     rng.Next(24, 36) / 10f,
                     rng.Next(50, 80) / 10f,
@@ -300,13 +307,14 @@ namespace HollowDescent.LevelGen
             }
             else if (eb is EnemyChaser ec)
             {
-                eb.ApplyRuntimeCombatStats(rng.Next(1, 4) + bossBump, rng.Next(1, 3));
-                ec.ApplyMovementProfile(rng.Next(30, 52) / 10f);
+                eb.ApplyRuntimeCombatStats(rng.Next(1, 4) + bossBump + levelBump, rng.Next(1, 3));
+                var speedBoost = levelBump > 0 ? 0.5f : 0f;
+                ec.ApplyMovementProfile(rng.Next(30, 52) / 10f + speedBoost);
                 MaybeTintRuntimePrimitive(eb, rng, flanker, shooter);
             }
             else
             {
-                eb.ApplyRuntimeCombatStats(rng.Next(2, 4) + bossBump, rng.Next(1, 3));
+                eb.ApplyRuntimeCombatStats(rng.Next(2, 4) + bossBump + levelBump, rng.Next(1, 3));
             }
         }
 
@@ -396,10 +404,14 @@ namespace HollowDescent.LevelGen
             SpawnRewardMarker();
             if (GameManager.Instance != null)
                 GameManager.Instance.SetEnemiesRemaining(0);
+            GameManager.Instance?.SetEnemyComposition("");
+            var echoBonus = roomType == RoomType.Boss ? 25 : 10;
             RunState.Instance?.RecordRoomCleared();
-            RunState.Instance?.AddCurrency(roomType == RoomType.Boss ? 25 : 10);
+            RunState.Instance?.AddCurrency(echoBonus);
             if (roomType == RoomType.Boss)
                 RunState.Instance?.MarkRunComplete();
+            var hud = FindFirstObjectByType<HollowDescent.UI_Debug.MinimalHUD>();
+            if (hud != null) hud.NotifyRoomCleared(echoBonus, roomType == RoomType.Boss);
         }
 
         private void SpawnRewardMarker()

@@ -20,6 +20,7 @@ namespace HollowDescent.Bootstrap
         private const string PlayerResourcePath = "Prefabs/Characters/Player";
         private const string WitnessResourcePath = "Prefabs/Characters/NarrativeWitnessNPC";
         private const string Level1ResourcePath = "Prefabs/Levels/Level_01";
+        private const string BackgroundMusicResourcePath = "Audio/background-music";
 
         [Header("Optional: leave null to use Resources path or runtime fallback")]
         [SerializeField] private GameObject playerPrefabOrNull;
@@ -28,14 +29,62 @@ namespace HollowDescent.Bootstrap
         [SerializeField] private FloorGenerator floorGeneratorOrNull;
         [SerializeField] private GameManager gameManagerOrNull;
         [SerializeField] private AudioClip finalRoomNarrativeClip;
+        [Header("Audio")]
+        [SerializeField] private AudioClip backgroundMusicClipOrNull;
+        [SerializeField, Range(0f, 1f)] private float backgroundMusicVolume = 0.12f;
+        [Header("Startup Menu")]
+        [SerializeField] private bool showStartupMenu = true;
+        [SerializeField] private string startupGameTitle = "Hollow Descent";
+        [SerializeField] private string startupButtonText = "Start Game";
 
         private GameObject _player;
         private Camera _camera;
         private FloorGenerator _floorGen;
         private GameManager _gm;
+        private bool _hasBootstrapped;
 
         private void Start()
         {
+            EnsureBackgroundMusic();
+
+            if (showStartupMenu)
+            {
+                StartMenuOverlay.Show(startupGameTitle, startupButtonText, BootstrapGame);
+                return;
+            }
+
+            BootstrapGame();
+        }
+
+        /// <summary>
+        /// Called by GameManager to return to main menu. Resets bootstrap state and shows the start overlay.
+        /// </summary>
+        public void ShowMainMenu()
+        {
+            _hasBootstrapped = false;
+            StartMenuOverlay.Show(startupGameTitle, startupButtonText, RebootGame);
+        }
+
+        private void RebootGame()
+        {
+            _hasBootstrapped = true;
+
+            // Re-activate player (may be inactive, so tag search won't find it)
+            if (_player != null) _player.SetActive(true);
+            var playerGo = _player != null ? _player : GameObject.FindGameObjectWithTag("Player");
+            if (playerGo != null) playerGo.SetActive(true);
+
+            // Rebuild level
+            if (LevelManager.Instance != null)
+                LevelManager.Instance.LoadLevel(1);
+
+            EnsureNarrativeTrigger();
+        }
+
+        private void BootstrapGame()
+        {
+            if (_hasBootstrapped) return;
+            _hasBootstrapped = true;
             EnsureGameManager();
             EnsureRunState();
             EnsureShopSystem();
@@ -326,6 +375,56 @@ namespace HollowDescent.Bootstrap
             }
 #endif
             return finalRoomNarrativeClip;
+        }
+
+        private void EnsureBackgroundMusic()
+        {
+            var existing = GameObject.Find("BackgroundMusic");
+            if (existing != null)
+            {
+                var existingSource = existing.GetComponent<AudioSource>();
+                if (existingSource != null)
+                {
+                    existingSource.loop = true;
+                    existingSource.spatialBlend = 0f;
+                    existingSource.volume = backgroundMusicVolume;
+                    if (!existingSource.isPlaying)
+                        existingSource.Play();
+                }
+                return;
+            }
+
+            var clip = ResolveBackgroundMusicClip();
+            if (clip == null)
+            {
+                Debug.LogWarning("[Audio] Background music clip not found. Assign GameBootstrap.backgroundMusicClipOrNull or add Resources/Audio/background-music.");
+                return;
+            }
+
+            var go = new GameObject("BackgroundMusic");
+            DontDestroyOnLoad(go);
+            var source = go.AddComponent<AudioSource>();
+            source.clip = clip;
+            source.loop = true;
+            source.playOnAwake = true;
+            source.spatialBlend = 0f;
+            source.volume = backgroundMusicVolume;
+            source.priority = 200; // Lower priority than critical SFX so effects remain clear.
+            source.ignoreListenerPause = true;
+            source.Play();
+        }
+
+        private AudioClip ResolveBackgroundMusicClip()
+        {
+            if (backgroundMusicClipOrNull != null) return backgroundMusicClipOrNull;
+
+            backgroundMusicClipOrNull = Resources.Load<AudioClip>(BackgroundMusicResourcePath);
+            if (backgroundMusicClipOrNull != null) return backgroundMusicClipOrNull;
+
+#if UNITY_EDITOR
+            backgroundMusicClipOrNull = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/background-music.mp3");
+#endif
+            return backgroundMusicClipOrNull;
         }
     }
 }

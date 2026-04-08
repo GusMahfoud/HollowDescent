@@ -39,12 +39,44 @@ namespace HollowDescent.UI_Debug
         private GUIStyle _fullScreenButtonStyle;
         private GUIStyle _currencyStyle;
         private GUIStyle _buffStyle;
+        private GUIStyle _menuButtonStyle;
 
         private bool _hasLeftFirstRoom;
         private bool _legendExpandedAfterFirstRoom;
 
+        // Room flavor subtitles
+        private GUIStyle _flavorStyle;
+        private string _currentFlavor;
+        private float _flavorShowTime;
+        private float _flavorDuration = 4f;
+        private string _lastFlavorRoom;
+
+        private static readonly Dictionary<string, string> RoomFlavor = new Dictionary<string, string>
+        {
+            { "Start (Safe)", "A moment of calm before the descent." },
+            { "Combat 1", "Something stirs in the darkness." },
+            { "Branch A", "The Hollow splits. Choose wisely." },
+            { "Branch B", "An alternate path through forgotten halls." },
+            { "Reconverge", "All paths lead here." },
+            { "Shop (Safe)", "A merchant who shouldn't exist." },
+            { "To Level 2", "The way down beckons." },
+            { "L2 Start", "Deeper. The walls shift when you're not looking." },
+            { "L2 Combat 1", "The trials grow restless." },
+            { "L2 Combat 2", "Containment failed long ago." },
+            { "L2 Safe", "Even here, a brief reprieve." },
+            { "L2 Boss", "The final trial awaits." },
+        };
+
+        // Room Cleared flash
+        private GUIStyle _clearedStyle;
+        private string _clearedText;
+        private float _clearedShowTime;
+        private float _clearedDuration = 2.5f;
+
         private void OnGUI()
         {
+            if (FindFirstObjectByType<StartMenuOverlay>() != null) return;
+
             if (_labelStyle == null || _legendTitleStyle == null || _rowStyle == null || _legendToggleStyle == null || _lifeTitleStyle == null || _lifeHeartStyle == null ||
                 _deathTitleStyle == null || _deathBodyStyle == null || _fullScreenButtonStyle == null || _currencyStyle == null || _buffStyle == null)
             {
@@ -139,6 +171,29 @@ namespace HollowDescent.UI_Debug
                     alignment = TextAnchor.UpperLeft,
                     normal = { textColor = new Color(0.7f, 0.9f, 1f) }
                 };
+                _flavorStyle = new GUIStyle(baseStyle)
+                {
+                    font = font,
+                    fontSize = Mathf.Max(16, fontSize - 2),
+                    fontStyle = FontStyle.Italic,
+                    alignment = TextAnchor.UpperLeft,
+                    normal = { textColor = new Color(0.8f, 0.8f, 0.7f) }
+                };
+                _menuButtonStyle = new GUIStyle(GUI.skin != null ? GUI.skin.button : baseStyle)
+                {
+                    font = font,
+                    fontSize = Mathf.Max(12, fontSize - 6),
+                    alignment = TextAnchor.MiddleCenter,
+                    padding = new RectOffset(8, 8, 4, 4)
+                };
+                _clearedStyle = new GUIStyle(baseStyle)
+                {
+                    font = font,
+                    fontSize = Mathf.Max(22, fontSize + 4),
+                    fontStyle = FontStyle.Bold,
+                    alignment = TextAnchor.MiddleCenter,
+                    normal = { textColor = new Color(1f, 0.9f, 0.3f) }
+                };
             }
 
             if (_labelStyle == null || _legendTitleStyle == null || _rowStyle == null || _legendToggleStyle == null || _lifeTitleStyle == null || _lifeHeartStyle == null ||
@@ -148,15 +203,19 @@ namespace HollowDescent.UI_Debug
             var room = gm != null ? gm.CurrentRoomName : "\u2014";
             var enemies = gm != null ? gm.EnemiesRemainingInRoom : 0;
             UpdateLegendRoomState(room);
+            UpdateFlavorText(room);
             var legendVisible = !_hasLeftFirstRoom || _legendExpandedAfterFirstRoom;
             var hideRoomStatus = legendVisible;
             if (!hideRoomStatus)
             {
                 DrawRoomStatusTopLeft(room, enemies);
                 DrawCurrencyDisplay();
+                DrawFlavorSubtitle();
             }
+            DrawRoomClearedFlash();
             DrawPlayerLivesTopRight();
             DrawLegendSectionBottomLeft();
+            DrawMainMenuButton();
             DrawDeathScreenIfNeeded();
             DrawVictoryScreenIfNeeded();
         }
@@ -174,11 +233,16 @@ namespace HollowDescent.UI_Debug
 
         private void DrawRoomStatusTopLeft(string room, int enemies)
         {
-            var panelRect = new Rect(padding, padding, 300, 74);
+            var panelRect = new Rect(padding, padding, 400, 74);
             var lineHeight = Mathf.Max(20, fontSize + 2);
             var x = panelRect.x + 8;
             GUI.Label(new Rect(x, panelRect.y + 4, panelRect.width - 16, lineHeight), $"<b>Room</b>  {room}", _labelStyle);
-            GUI.Label(new Rect(x, panelRect.y + 4 + lineHeight, panelRect.width - 16, lineHeight), $"<b>Enemies</b>  {enemies}", _labelStyle);
+            var gm = GameManager.Instance;
+            var comp = gm != null ? gm.EnemyComposition : "";
+            var enemyText = enemies > 0 && !string.IsNullOrEmpty(comp)
+                ? $"<b>Enemies</b>  {enemies} ({comp})"
+                : $"<b>Enemies</b>  {enemies}";
+            GUI.Label(new Rect(x, panelRect.y + 4 + lineHeight, panelRect.width - 16, lineHeight), enemyText, _labelStyle);
         }
 
         private void DrawDeathScreenIfNeeded()
@@ -196,7 +260,7 @@ namespace HollowDescent.UI_Debug
             const float boxH = 400f;
             GUILayout.BeginArea(new Rect((Screen.width - boxW) * 0.5f, (Screen.height - boxH) * 0.5f, boxW, boxH));
             GUILayout.Label("Run ended", _deathTitleStyle);
-            GUILayout.Label("No lives remaining. Restart from Level 1 to begin a fresh run.", _deathBodyStyle);
+            GUILayout.Label("The Hollow claims another. Your echoes fade into silence.", _deathBodyStyle);
             GUILayout.Space(8f);
             DrawRunStats();
             GUILayout.Space(12f);
@@ -209,6 +273,7 @@ namespace HollowDescent.UI_Debug
         {
             var rs = RunState.Instance;
             if (rs == null || _deathBodyStyle == null) return;
+            GUILayout.Label($"Time: {rs.GetRunTimeFormatted()}", _deathBodyStyle);
             GUILayout.Label($"Enemies Defeated: {rs.EnemiesKilled}", _deathBodyStyle);
             GUILayout.Label($"Rooms Cleared: {rs.RoomsCleared}", _deathBodyStyle);
             GUILayout.Label($"Damage Taken: {rs.DamageTaken}", _deathBodyStyle);
@@ -232,7 +297,7 @@ namespace HollowDescent.UI_Debug
             const float boxH = 400f;
             GUILayout.BeginArea(new Rect((Screen.width - boxW) * 0.5f, (Screen.height - boxH) * 0.5f, boxW, boxH));
             GUILayout.Label("Run Complete!", _deathTitleStyle);
-            GUILayout.Label("You conquered the Hollow.", _deathBodyStyle);
+            GUILayout.Label("The final trial falls silent. The architects would be proud... or terrified.", _deathBodyStyle);
             GUILayout.Space(8f);
             DrawRunStats();
             GUILayout.Space(12f);
@@ -283,6 +348,65 @@ namespace HollowDescent.UI_Debug
             GUI.Label(new Rect(padding + 8, y, 200, 24), $"Echoes: {rs.Currency}", _currencyStyle);
         }
 
+        private void UpdateFlavorText(string roomName)
+        {
+            if (string.IsNullOrEmpty(roomName) || roomName == _lastFlavorRoom) return;
+            _lastFlavorRoom = roomName;
+            if (RoomFlavor.TryGetValue(roomName, out var flavor))
+            {
+                _currentFlavor = flavor;
+                _flavorShowTime = Time.unscaledTime;
+            }
+        }
+
+        private void DrawFlavorSubtitle()
+        {
+            if (_flavorStyle == null || string.IsNullOrEmpty(_currentFlavor)) return;
+            var elapsed = Time.unscaledTime - _flavorShowTime;
+            if (elapsed > _flavorDuration) return;
+            // Fade in for 0.5s, hold, fade out last 1s
+            float alpha;
+            if (elapsed < 0.5f)
+                alpha = elapsed / 0.5f;
+            else if (elapsed > _flavorDuration - 1f)
+                alpha = (_flavorDuration - elapsed) / 1f;
+            else
+                alpha = 1f;
+            var prev = GUI.contentColor;
+            GUI.contentColor = new Color(0.8f, 0.8f, 0.7f, alpha);
+            var y = padding + 106;
+            GUI.Label(new Rect(padding + 8, y, 400, 24), _currentFlavor, _flavorStyle);
+            GUI.contentColor = prev;
+        }
+
+        public void NotifyRoomCleared(int echoesAwarded, bool isBoss)
+        {
+            _clearedText = isBoss
+                ? $"Boss Defeated! +{echoesAwarded} Echoes"
+                : $"Room Cleared! +{echoesAwarded} Echoes";
+            _clearedShowTime = Time.unscaledTime;
+        }
+
+        private void DrawRoomClearedFlash()
+        {
+            if (_clearedStyle == null || string.IsNullOrEmpty(_clearedText)) return;
+            var elapsed = Time.unscaledTime - _clearedShowTime;
+            if (elapsed > _clearedDuration) return;
+            float alpha;
+            if (elapsed < 0.3f)
+                alpha = elapsed / 0.3f;
+            else if (elapsed > _clearedDuration - 0.8f)
+                alpha = (_clearedDuration - elapsed) / 0.8f;
+            else
+                alpha = 1f;
+            var prev = GUI.contentColor;
+            GUI.contentColor = new Color(1f, 0.9f, 0.3f, alpha);
+            var w = 400f;
+            var h = 40f;
+            GUI.Label(new Rect((Screen.width - w) * 0.5f, Screen.height * 0.3f, w, h), _clearedText, _clearedStyle);
+            GUI.contentColor = prev;
+        }
+
         private void DrawActiveBuffs(int startX, int startY)
         {
             if (_buffStyle == null) return;
@@ -296,6 +420,25 @@ namespace HollowDescent.UI_Debug
             {
                 GUI.Label(new Rect(startX, y, 180, 20), name, _buffStyle);
                 y += 18;
+            }
+        }
+
+        private void DrawMainMenuButton()
+        {
+            if (_menuButtonStyle == null) return;
+            var gm = GameManager.Instance;
+            // Don't show during death/victory screens (they have their own buttons)
+            if (gm != null && gm.DeathScreenOpen) return;
+            var rs = RunState.Instance;
+            if (rs != null && rs.RunComplete) return;
+
+            var btnW = 80f;
+            var btnH = 28f;
+            var btnX = Screen.width - padding - btnW;
+            var btnY = Screen.height - padding - btnH;
+            if (GUI.Button(new Rect(btnX, btnY, btnW, btnH), "Menu", _menuButtonStyle))
+            {
+                if (gm != null) gm.ReturnToMainMenu();
             }
         }
 

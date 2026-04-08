@@ -15,6 +15,15 @@ namespace HollowDescent.Bootstrap
         public int RoomsCleared { get; private set; }
         public int DamageTaken { get; private set; }
         public bool RunComplete { get; private set; }
+        public float RunStartTime { get; private set; }
+
+        public string GetRunTimeFormatted()
+        {
+            var elapsed = Time.unscaledTime - RunStartTime;
+            var mins = Mathf.FloorToInt(elapsed / 60f);
+            var secs = Mathf.FloorToInt(elapsed % 60f);
+            return $"{mins}m {secs:00}s";
+        }
 
         public void AddCurrency(int amount)
         {
@@ -43,6 +52,7 @@ namespace HollowDescent.Bootstrap
             RoomsCleared = 0;
             DamageTaken = 0;
             RunComplete = false;
+            RunStartTime = Time.unscaledTime;
 
             var playerGo = GameObject.FindGameObjectWithTag("Player");
             var mods = playerGo != null ? playerGo.GetComponent<Gameplay.PlayerStatModifiers>() : null;
@@ -59,6 +69,7 @@ namespace HollowDescent.Bootstrap
                 return;
             }
             Instance = this;
+            RunStartTime = Time.unscaledTime;
         }
 
         private void OnDestroy()

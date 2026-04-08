@@ -37,7 +37,13 @@ namespace HollowDescent.LevelGen
         private TextMeshProUGUI _popup;
         private AudioSource _audioSource;
         private Coroutine _playRoutine;
+        private GameObject _canvasRoot;
         private static AudioClip _generatedFallbackClip;
+
+        public void SetLines(string[] newLines)
+        {
+            lines = newLines;
+        }
 
         public void SetReactingNpc(NPCNavReact npc)
         {
@@ -62,15 +68,17 @@ namespace HollowDescent.LevelGen
             _audioSource.maxDistance = 100f;
             _audioSource.rolloffMode = AudioRolloffMode.Linear;
 
-            var canvasGo = new GameObject("NarrativeOverlayCanvas");
-            var canvas = canvasGo.AddComponent<Canvas>();
+            // Keep overlay canvas owned by this trigger so restarts/unloads cannot orphan it.
+            _canvasRoot = new GameObject("NarrativeOverlayCanvas");
+            _canvasRoot.transform.SetParent(transform, false);
+            var canvas = _canvasRoot.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 500;
-            canvasGo.AddComponent<CanvasScaler>();
-            canvasGo.AddComponent<GraphicRaycaster>();
+            _canvasRoot.AddComponent<CanvasScaler>();
+            _canvasRoot.AddComponent<GraphicRaycaster>();
 
             var popupGo = new GameObject("NarrativePopup");
-            popupGo.transform.SetParent(canvasGo.transform, false);
+            popupGo.transform.SetParent(_canvasRoot.transform, false);
             _popup = popupGo.AddComponent<TextMeshProUGUI>();
             _popup.text = "";
             _popup.alignment = TextAlignmentOptions.Center;
@@ -84,6 +92,15 @@ namespace HollowDescent.LevelGen
             rt.offsetMin = Vector2.zero;
             rt.offsetMax = Vector2.zero;
             _popup.gameObject.SetActive(false);
+        }
+
+        private void OnDestroy()
+        {
+            if (_playRoutine != null)
+                StopCoroutine(_playRoutine);
+            _playRoutine = null;
+            _popup = null;
+            _canvasRoot = null;
         }
 
         private void OnTriggerEnter(Collider other)

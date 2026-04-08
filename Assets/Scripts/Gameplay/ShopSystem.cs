@@ -13,8 +13,8 @@ namespace HollowDescent.Gameplay
         public static ShopSystem Instance { get; private set; }
 
         [Header("Style")]
-        [SerializeField] private int panelWidth = 500;
-        [SerializeField] private int panelHeight = 460;
+        [SerializeField] private int panelWidth = 560;
+        [SerializeField] private int panelHeight = 520;
         [SerializeField] private int titleFontSize = 28;
         [SerializeField] private int bodyFontSize = 18;
 
@@ -36,6 +36,7 @@ namespace HollowDescent.Gameplay
         private GUIStyle _bodyStyle;
         private GUIStyle _buttonStyle;
         private GUIStyle _currencyStyle;
+        private GUIStyle _descStyle;
         private Texture2D _panelBg;
 
         private void Awake()
@@ -58,10 +59,10 @@ namespace HollowDescent.Gameplay
         {
             _items = new List<ShopItem>
             {
-                new ShopItem { Name = "Swift Boots", Description = "Move faster", Cost = 20, Buff = BuffType.MoveSpeed, BuffValue = 5f },
-                new ShopItem { Name = "Rapid Fire", Description = "Shoot faster", Cost = 25, Buff = BuffType.FireRate, BuffValue = 0.7f },
-                new ShopItem { Name = "Vitality Shard", Description = "+2 max HP", Cost = 30, Buff = BuffType.MaxHealth, BuffValue = 2f },
-                new ShopItem { Name = "Sharp Rounds", Description = "Hit harder", Cost = 35, Buff = BuffType.Damage, BuffValue = 1.5f },
+                new ShopItem { Name = "Swift Boots", Description = "Worn by the Hollow's couriers (+5 speed)", Cost = 20, Buff = BuffType.MoveSpeed, BuffValue = 5f },
+                new ShopItem { Name = "Rapid Fire", Description = "Etched with acceleration glyphs (0.7x fire delay)", Cost = 25, Buff = BuffType.FireRate, BuffValue = 0.7f },
+                new ShopItem { Name = "Vitality Shard", Description = "A fragment of living stone (+2 max HP)", Cost = 30, Buff = BuffType.MaxHealth, BuffValue = 2f },
+                new ShopItem { Name = "Sharp Rounds", Description = "Tipped with crystallized venom (1.5x damage)", Cost = 35, Buff = BuffType.Damage, BuffValue = 1.5f },
             };
         }
 
@@ -168,20 +169,29 @@ namespace HollowDescent.Gameplay
             for (var i = 0; i < _items.Count; i++)
             {
                 var item = _items[i];
-                GUILayout.BeginHorizontal(GUILayout.Height(40));
 
-                var label = item.Purchased
-                    ? $"<color=#888888>{item.Name} — {item.Description} (OWNED)</color>"
-                    : $"{item.Name} — {item.Description}  [{item.Cost} Echoes]";
-                GUILayout.Label(label, _bodyStyle, GUILayout.Width(panelWidth - 150), GUILayout.Height(34));
+                // Item name + cost on first line, description on second
+                var nameLine = item.Purchased
+                    ? $"<color=#888888>{item.Name}  (OWNED)</color>"
+                    : $"{item.Name}  <color=#FFE066>[{item.Cost} Echoes]</color>";
+                var descLine = item.Purchased
+                    ? $"<color=#666666>{item.Description}</color>"
+                    : $"<color=#BBBBBB>{item.Description}</color>";
+
+                GUILayout.BeginHorizontal(GUILayout.Height(56));
+
+                GUILayout.BeginVertical(GUILayout.Width(panelWidth - 160));
+                GUILayout.Label(nameLine, _bodyStyle, GUILayout.Height(24));
+                GUILayout.Label(descLine, _descStyle, GUILayout.Height(20));
+                GUILayout.EndVertical();
 
                 GUI.enabled = !item.Purchased && currency >= item.Cost;
-                if (GUILayout.Button("Buy", _buttonStyle, GUILayout.Width(80), GUILayout.Height(34)))
+                if (GUILayout.Button("Buy", _buttonStyle, GUILayout.Width(80), GUILayout.Height(50)))
                     TryBuy(i);
                 GUI.enabled = true;
 
                 GUILayout.EndHorizontal();
-                GUILayout.Space(6);
+                GUILayout.Space(10);
             }
 
             GUILayout.FlexibleSpace();
@@ -228,6 +238,15 @@ namespace HollowDescent.Gameplay
                 richText = true,
                 alignment = TextAnchor.MiddleLeft,
                 normal = { textColor = Color.white }
+            };
+            _descStyle = new GUIStyle(GUI.skin.label)
+            {
+                font = font,
+                fontSize = Mathf.Max(12, bodyFontSize - 4),
+                fontStyle = FontStyle.Italic,
+                richText = true,
+                alignment = TextAnchor.MiddleLeft,
+                normal = { textColor = new Color(0.73f, 0.73f, 0.73f) }
             };
             _buttonStyle = new GUIStyle(GUI.skin.button)
             {
