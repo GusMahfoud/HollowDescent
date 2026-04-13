@@ -326,7 +326,7 @@ namespace HollowDescent.UI_Debug
             controlsTmpTextOrNull.text = controlsDescription;
             controlsTmpTextOrNull.alignment = TextAlignmentOptions.TopLeft;
             controlsTmpTextOrNull.fontSize = 16f;
-            controlsTmpTextOrNull.enableWordWrapping = true;
+            controlsTmpTextOrNull.textWrappingMode = TextWrappingModes.Normal;
             controlsTmpTextOrNull.lineSpacing = 4f;
             controlsTmpTextOrNull.color = new Color(0.95f, 0.96f, 0.98f, 1f);
             var textRect = textGo.GetComponent<RectTransform>();
@@ -388,7 +388,7 @@ namespace HollowDescent.UI_Debug
             if (controlsTmpTextOrNull != null)
             {
                 controlsTmpTextOrNull.fontSize = 16f;
-                controlsTmpTextOrNull.enableWordWrapping = true;
+                controlsTmpTextOrNull.textWrappingMode = TextWrappingModes.Normal;
                 controlsTmpTextOrNull.lineSpacing = 4f;
                 controlsTmpTextOrNull.alignment = TextAlignmentOptions.TopLeft;
                 var tr = controlsTmpTextOrNull.rectTransform;

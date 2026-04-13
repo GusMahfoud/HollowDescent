@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using HollowDescent.LevelGen;
 
@@ -71,6 +72,21 @@ namespace HollowDescent.Bootstrap
             if (startT == null) return;
 
             _player.SetPositionAndRotation(startT.position, startT.rotation);
+        }
+
+        /// <summary>
+        /// Schedules <see cref="LoadLevel"/> after the current frame so it is safe to call from
+        /// physics callbacks (OnTriggerEnter, etc.). LoadLevel uses DestroyImmediate internally.
+        /// </summary>
+        public void LoadLevelDeferred(int levelIndex)
+        {
+            StartCoroutine(LoadLevelDeferredRoutine(levelIndex));
+        }
+
+        private IEnumerator LoadLevelDeferredRoutine(int levelIndex)
+        {
+            yield return null;
+            LoadLevel(levelIndex);
         }
 
         public void LoadLevel(int levelIndex)
@@ -157,7 +173,43 @@ namespace HollowDescent.Bootstrap
             _levelRoot.name = "LevelRoot";
             RegisterLevelRoot(_levelRoot);
             PlacePlayerAtLevelStart(_levelRoot);
+            if (levelIndex == 2)
+                EnsureLevel2ExitToLevel3(_levelRoot.transform);
             return true;
+        }
+
+        /// <summary>
+        /// Baked Level_02 originally ended at L2 Boss with no level exit. Adds a Level 3 transition trigger
+        /// (same layout as Level 1 → 2) without hand-editing the huge prefab.
+        /// </summary>
+        private static void EnsureLevel2ExitToLevel3(Transform levelRoot)
+        {
+            if (levelRoot == null) return;
+            if (levelRoot.Find("LevelPatch_ToLevel3") != null) return;
+
+            var patch = new GameObject("LevelPatch_ToLevel3");
+            patch.transform.SetParent(levelRoot, false);
+            patch.transform.position = new Vector3(86f, 0f, 0f);
+
+            var roomGo = new GameObject("Room_To Level 3");
+            roomGo.transform.SetParent(patch.transform, false);
+            roomGo.transform.localPosition = Vector3.zero;
+            var box = roomGo.AddComponent<BoxCollider>();
+            box.isTrigger = true;
+            box.size = new Vector3(13f, 3f, 9f);
+            roomGo.transform.localPosition = Vector3.zero;
+            var rc = roomGo.AddComponent<RoomController>();
+            rc.roomType = RoomType.LevelExit;
+            rc.roomName = "To Level 3";
+
+            var exitGo = new GameObject("LevelExitTrigger");
+            exitGo.transform.SetParent(patch.transform, false);
+            exitGo.transform.localPosition = new Vector3(-6f, 1.5f, 0f);
+            var exitBox = exitGo.AddComponent<BoxCollider>();
+            exitBox.isTrigger = true;
+            exitBox.size = new Vector3(2f, 3f, 4f);
+            var exit = exitGo.AddComponent<LevelExitTrigger>();
+            exit.SetTargetLevel(3);
         }
 
         private GameObject GetBakedLevelPrefab(int levelIndex)

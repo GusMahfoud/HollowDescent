@@ -64,7 +64,11 @@ namespace HollowDescent.UI_Debug
             { "L2 Combat 1", "The trials grow restless." },
             { "L2 Combat 2", "Containment failed long ago." },
             { "L2 Safe", "Even here, a brief reprieve." },
-            { "L2 Boss", "The final trial awaits." },
+            { "L2 Boss", "The gauntlet before the last door." },
+            { "To Level 3", "One more descent. The heart of the Hollow." },
+            { "Level 3 Start (Safe)", "The architecture ends. Whatever built this is waiting." },
+            { "L3 Combat 1", "The floor remembers every footstep." },
+            { "The Architect", "It was never meant to be contained." },
         };
 
         // Room Cleared flash
@@ -72,6 +76,19 @@ namespace HollowDescent.UI_Debug
         private string _clearedText;
         private float _clearedShowTime;
         private float _clearedDuration = 2.5f;
+
+        // Final boss → ending lines (before victory / run-complete screen)
+        private bool _showEndingDialogue;
+        private string[] _endingLines;
+        private int _endingLineIndex;
+
+        private static readonly string[] DefaultFinalEndingLines =
+        {
+            "The Architect unravels into violet dust.",
+            "What you defeated was only a caretaker—something older still watches from the seams.",
+            "The Hollow loosens its grip. Light finds you again, thin but real.",
+            "For now, you are free."
+        };
 
         private void OnGUI()
         {
@@ -198,6 +215,12 @@ namespace HollowDescent.UI_Debug
 
             if (_labelStyle == null || _legendTitleStyle == null || _rowStyle == null || _legendToggleStyle == null || _lifeTitleStyle == null || _lifeHeartStyle == null ||
                 _deathTitleStyle == null || _deathBodyStyle == null || _fullScreenButtonStyle == null || _currencyStyle == null || _buffStyle == null) return;
+
+            if (_showEndingDialogue)
+            {
+                DrawFinalEndingDialogue();
+                return;
+            }
 
             var gm = GameManager.Instance;
             var room = gm != null ? gm.CurrentRoomName : "\u2014";
@@ -381,10 +404,55 @@ namespace HollowDescent.UI_Debug
 
         public void NotifyRoomCleared(int echoesAwarded, bool isBoss)
         {
-            _clearedText = isBoss
-                ? $"Boss Defeated! +{echoesAwarded} Echoes"
-                : $"Room Cleared! +{echoesAwarded} Echoes";
+            NotifyRoomCleared(echoesAwarded, isBoss, false);
+        }
+
+        public void NotifyRoomCleared(int echoesAwarded, bool isBoss, bool isFinalBoss)
+        {
+            _clearedText = isFinalBoss
+                ? $"The Architect falls! +{echoesAwarded} Echoes"
+                : isBoss
+                    ? $"Boss Defeated! +{echoesAwarded} Echoes"
+                    : $"Room Cleared! +{echoesAwarded} Echoes";
             _clearedShowTime = Time.unscaledTime;
+        }
+
+        /// <summary>
+        /// Called when the Level 3 final boss is defeated. Shows story beats, then <see cref="RunState.MarkRunComplete"/>.
+        /// </summary>
+        public void QueueFinalEndingSequence()
+        {
+            _endingLines = DefaultFinalEndingLines;
+            _endingLineIndex = 0;
+            _showEndingDialogue = true;
+        }
+
+        private void DrawFinalEndingDialogue()
+        {
+            if (_deathTitleStyle == null || _deathBodyStyle == null || _fullScreenButtonStyle == null) return;
+
+            GUI.depth = -129;
+            var prevColor = GUI.color;
+            GUI.color = new Color(0f, 0f, 0f, 0.88f);
+            GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
+            GUI.color = prevColor;
+
+            const float boxW = 560f;
+            GUILayout.BeginArea(new Rect((Screen.width - boxW) * 0.5f, Screen.height * 0.18f, boxW, 460f));
+            GUILayout.Label("Epilogue", _deathTitleStyle);
+            if (_endingLines != null && _endingLineIndex >= 0 && _endingLineIndex < _endingLines.Length)
+                GUILayout.Label(_endingLines[_endingLineIndex], _deathBodyStyle);
+            GUILayout.Space(20f);
+            if (GUILayout.Button("Continue", _fullScreenButtonStyle))
+            {
+                _endingLineIndex++;
+                if (_endingLines == null || _endingLineIndex >= _endingLines.Length)
+                {
+                    _showEndingDialogue = false;
+                    RunState.Instance?.MarkRunComplete();
+                }
+            }
+            GUILayout.EndArea();
         }
 
         private void DrawRoomClearedFlash()

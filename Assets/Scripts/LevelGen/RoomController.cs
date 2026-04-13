@@ -15,7 +15,9 @@ namespace HollowDescent.LevelGen
         Safe,
         Boss,
         Exit,
-        LevelExit
+        LevelExit,
+        /// <summary>Unique final encounter; run completes only after this boss falls.</summary>
+        FinalBoss
     }
 
     /// <summary>
@@ -34,6 +36,7 @@ namespace HollowDescent.LevelGen
         [SerializeField] private GameObject chaserPrefab;
         [SerializeField] private GameObject shooterPrefab;
         [SerializeField] private GameObject flankerPrefab;
+        [SerializeField] private GameObject finalBossPrefab;
 
         [Header("Encounter")]
         public int chaserCount = 2;
@@ -132,7 +135,7 @@ namespace HollowDescent.LevelGen
                 GameManager.Instance.SetCurrentRoom(roomName);
             if (_isShopRoom)
                 Gameplay.ShopSystem.Instance?.EnterShopRoom();
-            if (roomType == RoomType.Combat || roomType == RoomType.Boss)
+            if (roomType == RoomType.Combat || roomType == RoomType.Boss || roomType == RoomType.FinalBoss)
             {
                 SetRoomEnemiesPursuitEnabled(true);
                 if (_encounterActive && !_encounterCleared)
@@ -140,7 +143,7 @@ namespace HollowDescent.LevelGen
             }
             if (roomType == RoomType.StartSafe || roomType == RoomType.Safe || roomType == RoomType.LevelExit) return;
             if (_encounterCleared) return;
-            if (roomType != RoomType.Combat && roomType != RoomType.Boss) return;
+            if (roomType != RoomType.Combat && roomType != RoomType.Boss && roomType != RoomType.FinalBoss) return;
             if (_encounterActive) return;
 
             _encounterActive = true;
@@ -163,7 +166,7 @@ namespace HollowDescent.LevelGen
 
         public void HandlePlayerDeathInRoom()
         {
-            if (roomType != RoomType.Combat && roomType != RoomType.Boss) return;
+            if (roomType != RoomType.Combat && roomType != RoomType.Boss && roomType != RoomType.FinalBoss) return;
             if (_encounterCleared) return;
             SetDoorsOpen(true);
             SetRoomEnemiesPursuitEnabled(false);
@@ -179,6 +182,12 @@ namespace HollowDescent.LevelGen
         private void SpawnEnemies()
         {
             _spawnedEnemies.Clear();
+            if (roomType == RoomType.FinalBoss)
+            {
+                SpawnFinalBossEncounter();
+                return;
+            }
+
             var player = GameObject.FindGameObjectWithTag("Player");
             if (player == null)
             {
@@ -235,6 +244,83 @@ namespace HollowDescent.LevelGen
             if (flankerCount > 0) parts.Add($"{flankerCount} Flanker{(flankerCount > 1 ? "s" : "")}");
             GameManager.Instance?.SetEnemyComposition(string.Join(", ", parts));
             FinishEncounterIfNoEnemiesSpawned();
+        }
+
+        private void SpawnFinalBossEncounter()
+        {
+            var player = GameObject.FindGameObjectWithTag("Player");
+            if (player == null)
+            {
+                FinishEncounterIfNoEnemiesSpawned();
+                return;
+            }
+
+            var pos = enemySpawnPoints.Count > 0 ? enemySpawnPoints[0].position : transform.position + Vector3.up * 0.1f;
+            GameObject go;
+            EnemyFinalBoss fb;
+            if (finalBossPrefab != null)
+            {
+                go = Instantiate(finalBossPrefab, pos, Quaternion.identity);
+                go.transform.SetParent(transform, true);
+                fb = go.GetComponent<EnemyFinalBoss>();
+                if (fb == null) fb = go.AddComponent<EnemyFinalBoss>();
+            }
+            else
+            {
+                go = CreateFinalBossPrimitive(pos);
+                go.transform.SetParent(transform, true);
+                fb = go.GetComponent<EnemyFinalBoss>();
+            }
+
+            fb.Initialize(this);
+            fb.OnDeath += OnEnemyDied;
+            _spawnedEnemies.Add(fb);
+            UpdateGMEnemyCount();
+            GameManager.Instance?.SetEnemyComposition("The Architect");
+            FinishEncounterIfNoEnemiesSpawned();
+        }
+
+        private static GameObject CreateFinalBossPrimitive(Vector3 pos)
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            go.name = "Enemy_FinalBoss";
+            go.transform.position = pos + Vector3.up * 1f;
+            var col = go.GetComponent<Collider>();
+            if (col != null) col.isTrigger = false;
+            var rb = go.AddComponent<Rigidbody>();
+            rb.useGravity = false;
+            rb.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY;
+            rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
+            go.AddComponent<EnemyFinalBoss>();
+            return go;
+        }
+
+        /// <summary>Minions spawned by <see cref="EnemyFinalBoss"/>; killing them does not clear the room.</summary>
+        public void RegisterFinalBossMinion(EnemyBase minion)
+        {
+            if (minion == null || roomType != RoomType.FinalBoss) return;
+            minion.OnDeath += OnFinalBossMinionDied;
+            _spawnedEnemies.Add(minion);
+            UpdateGMEnemyCount();
+        }
+
+        private void OnFinalBossMinionDied(EnemyBase m)
+        {
+            if (m != null) m.OnDeath -= OnFinalBossMinionDied;
+            _spawnedEnemies.Remove(m);
+            UpdateGMEnemyCount();
+        }
+
+        private void FinalBossCleanupMinions()
+        {
+            for (var i = _spawnedEnemies.Count - 1; i >= 0; i--)
+            {
+                var e = _spawnedEnemies[i];
+                if (e == null || e is EnemyFinalBoss) continue;
+                e.OnDeath -= OnFinalBossMinionDied;
+                Destroy(e.gameObject);
+                _spawnedEnemies.RemoveAt(i);
+            }
         }
 
         /// <summary>
@@ -387,6 +473,22 @@ namespace HollowDescent.LevelGen
 
         private void OnEnemyDied(EnemyBase enemy)
         {
+            if (enemy is EnemyFinalBoss)
+            {
+                FinalBossCleanupMinions();
+                _spawnedEnemies.Remove(enemy);
+                UpdateGMEnemyCount();
+                OnEncounterCleared();
+                return;
+            }
+
+            if (roomType == RoomType.FinalBoss)
+            {
+                _spawnedEnemies.Remove(enemy);
+                UpdateGMEnemyCount();
+                return;
+            }
+
             _spawnedEnemies.Remove(enemy);
             UpdateGMEnemyCount();
             if (_spawnedEnemies.Count <= 0)
@@ -407,13 +509,21 @@ namespace HollowDescent.LevelGen
             if (GameManager.Instance != null)
                 GameManager.Instance.SetEnemiesRemaining(0);
             GameManager.Instance?.SetEnemyComposition("");
-            var echoBonus = roomType == RoomType.Boss ? 25 : 10;
+
+            var echoBonus = roomType == RoomType.FinalBoss ? 60 : (roomType == RoomType.Boss ? 25 : 10);
             RunState.Instance?.RecordRoomCleared();
             RunState.Instance?.AddCurrency(echoBonus);
-            if (roomType == RoomType.Boss)
-                RunState.Instance?.MarkRunComplete();
+
+            if (roomType == RoomType.FinalBoss)
+            {
+                var hudEnd = FindFirstObjectByType<HollowDescent.UI_Debug.MinimalHUD>();
+                if (hudEnd != null) hudEnd.QueueFinalEndingSequence();
+                else RunState.Instance?.MarkRunComplete();
+            }
+
             var hud = FindFirstObjectByType<HollowDescent.UI_Debug.MinimalHUD>();
-            if (hud != null) hud.NotifyRoomCleared(echoBonus, roomType == RoomType.Boss);
+            if (hud != null)
+                hud.NotifyRoomCleared(echoBonus, roomType == RoomType.Boss, roomType == RoomType.FinalBoss);
         }
 
         private void SpawnRewardMarker()
@@ -433,7 +543,7 @@ namespace HollowDescent.LevelGen
             var r = _rewardMarker.GetComponent<Renderer>();
             if (r != null) GrayboxTintUtil.Apply(r, new Color(1f, 0.9f, 0.2f));
             var pickup = _rewardMarker.AddComponent<RewardPickup>();
-            pickup.SetAmount(roomType == RoomType.Boss ? 40 : 15);
+            pickup.SetAmount(roomType == RoomType.FinalBoss ? 60 : (roomType == RoomType.Boss ? 40 : 15));
         }
 
         private void OnDrawGizmos()

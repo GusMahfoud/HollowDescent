@@ -95,7 +95,7 @@ namespace HollowDescent.Bootstrap
             foreach (var enemy in enemies)
             {
                 if (enemy != null)
-                    DestroyImmediate(enemy.gameObject);
+                    Destroy(enemy.gameObject);
             }
 
             currentRoomName = "Start (Safe)";

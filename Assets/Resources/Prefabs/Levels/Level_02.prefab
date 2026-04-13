@@ -7088,7 +7088,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 28aae08a51172e94c81f51148cb2e364, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HollowDescent.LevelGen.RoomController
-  roomType: 3
+  roomType: 1
   roomName: L2 Boss
   doorBlockers:
   - {fileID: 448428658146852583}
