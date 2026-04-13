@@ -203,13 +203,19 @@ namespace HollowDescent.Bootstrap
             rc.roomType = RoomType.LevelExit;
             rc.roomName = "To Level 3";
 
-            var exitGo = new GameObject("LevelExitTrigger");
-            exitGo.transform.SetParent(patch.transform, false);
-            exitGo.transform.localPosition = new Vector3(-6f, 1.5f, 0f);
-            var exitBox = exitGo.AddComponent<BoxCollider>();
-            exitBox.isTrigger = true;
-            exitBox.size = new Vector3(2f, 3f, 4f);
-            var exit = exitGo.AddComponent<LevelExitTrigger>();
+            // Single blue portal sphere — transition only when touching this (not the whole room trigger).
+            var portal = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            portal.name = "Level3Portal";
+            portal.transform.SetParent(patch.transform, false);
+            portal.transform.localPosition = new Vector3(0f, 1.15f, 0f);
+            portal.transform.localScale = new Vector3(2f, 2f, 2f);
+            var pr = portal.GetComponent<Renderer>();
+            if (pr != null) GrayboxTintUtil.Apply(pr, new Color(0.2f, 0.6f, 1f));
+            Object.Destroy(portal.GetComponent<Collider>());
+            var sph = portal.AddComponent<SphereCollider>();
+            sph.isTrigger = true;
+            sph.radius = 0.52f;
+            var exit = portal.AddComponent<LevelExitTrigger>();
             exit.SetTargetLevel(3);
         }
 

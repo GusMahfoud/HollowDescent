@@ -68,15 +68,22 @@ namespace HollowDescent.AI
         private void TrySpawnOneMinion()
         {
             var player = GameObject.FindGameObjectWithTag("Player");
-            var offset = Random.insideUnitSphere * 4f;
-            offset.y = 0f;
-            var pos = transform.position + offset;
+            var horizontal = Random.insideUnitSphere * 4f;
+            horizontal.y = 0f;
+            if (horizontal.sqrMagnitude < 0.01f)
+                horizontal = new Vector3(Random.value > 0.5f ? 1f : -1f, 0f, Random.value > 0.5f ? 1f : -1f);
+            var dist = horizontal.magnitude;
+            const float minRing = 3.6f;
+            if (dist < minRing)
+                horizontal = horizontal.normalized * minRing;
+            var pos = transform.position + horizontal;
+            pos.y = transform.position.y;
             if (player != null)
             {
-                var away = (pos - player.transform.position);
+                var away = pos - player.transform.position;
                 away.y = 0f;
-                if (away.sqrMagnitude < 4f)
-                    pos = transform.position + (away.sqrMagnitude > 0.01f ? away.normalized : Vector3.right) * 5f;
+                if (away.sqrMagnitude < 2.5f)
+                    pos = player.transform.position + (away.sqrMagnitude > 0.01f ? away.normalized : Vector3.right) * 3f;
             }
 
             var go = SimpleFigureVisuals.CreateBossMinion(pos);

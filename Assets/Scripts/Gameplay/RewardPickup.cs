@@ -5,24 +5,32 @@ namespace HollowDescent.Gameplay
 {
     /// <summary>
     /// Collectible pickup spawned when a combat room is cleared.
-    /// Bobs up and down; awards currency on player contact.
+    /// Trigger stays fixed; only the coin mesh bobs so the pickup doesn't flicker in/out of the player trigger.
     /// </summary>
     public class RewardPickup : MonoBehaviour
     {
         [SerializeField] private int currencyAmount = 15;
-        [SerializeField] private float bobSpeed = 2f;
-        [SerializeField] private float bobHeight = 0.3f;
+        [SerializeField] private float bobSpeed = 2.6f;
+        [SerializeField] private float bobHeight = 0.12f;
+        [SerializeField] private float spinSpeedDegrees = 108f;
 
-        private float _baseY;
+        private Transform _coinVisual;
+        private Vector3 _coinBaseLocal;
 
         public void SetAmount(int amount)
         {
             currencyAmount = Mathf.Max(1, amount);
         }
 
+        private void Awake()
+        {
+            _coinVisual = transform.Find("CoinVisual");
+            if (_coinVisual != null)
+                _coinBaseLocal = _coinVisual.localPosition;
+        }
+
         private void Start()
         {
-            _baseY = transform.position.y;
             var col = GetComponent<Collider>();
             if (col != null)
             {
@@ -33,9 +41,11 @@ namespace HollowDescent.Gameplay
 
         private void Update()
         {
-            var pos = transform.position;
-            pos.y = _baseY + Mathf.Sin(Time.time * bobSpeed) * bobHeight;
-            transform.position = pos;
+            if (_coinVisual == null) return;
+            _coinVisual.Rotate(0f, spinSpeedDegrees * Time.deltaTime, 0f, Space.World);
+            var lp = _coinBaseLocal;
+            lp.y = _coinBaseLocal.y + Mathf.Sin(Time.time * bobSpeed) * bobHeight;
+            _coinVisual.localPosition = lp;
         }
 
         private void OnTriggerEnter(Collider other)

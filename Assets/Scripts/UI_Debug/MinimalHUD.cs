@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using HollowDescent.AI;
 using HollowDescent.Bootstrap;
 using HollowDescent.Gameplay;
 using UnityEngine;
@@ -216,6 +217,8 @@ namespace HollowDescent.UI_Debug
             if (_labelStyle == null || _legendTitleStyle == null || _rowStyle == null || _legendToggleStyle == null || _lifeTitleStyle == null || _lifeHeartStyle == null ||
                 _deathTitleStyle == null || _deathBodyStyle == null || _fullScreenButtonStyle == null || _currencyStyle == null || _buffStyle == null) return;
 
+            DrawRoomClearedFlash();
+
             if (_showEndingDialogue)
             {
                 DrawFinalEndingDialogue();
@@ -235,7 +238,7 @@ namespace HollowDescent.UI_Debug
                 DrawCurrencyDisplay();
                 DrawFlavorSubtitle();
             }
-            DrawRoomClearedFlash();
+            DrawBossHealthBarIfNeeded();
             DrawPlayerLivesTopRight();
             DrawLegendSectionBottomLeft();
             DrawMainMenuButton();
@@ -476,6 +479,32 @@ namespace HollowDescent.UI_Debug
             var h = 40f;
             GUI.Label(new Rect((Screen.width - w) * 0.5f, Screen.height * 0.3f, w, h), _clearedText, _clearedStyle);
             GUI.contentColor = prev;
+        }
+
+        private void DrawBossHealthBarIfNeeded()
+        {
+            var gm = GameManager.Instance;
+            if (gm == null) return;
+            if (!string.Equals(gm.CurrentRoomName, "The Architect", System.StringComparison.OrdinalIgnoreCase)) return;
+            var boss = FindFirstObjectByType<EnemyFinalBoss>();
+            if (boss == null) return;
+
+            var cur = boss.GetCurrentHealth();
+            var max = Mathf.Max(1, boss.GetMaxHealth());
+            var t = Mathf.Clamp01((float)cur / max);
+            const float w = 280f;
+            const float h = 16f;
+            var x = (Screen.width - w) * 0.5f;
+            var y = padding + 4f;
+
+            var prev = GUI.color;
+            GUI.color = new Color(0.08f, 0.08f, 0.1f, 0.88f);
+            GUI.DrawTexture(new Rect(x, y, w, h), Texture2D.whiteTexture);
+            GUI.color = new Color(0.62f, 0.2f, 0.78f, 0.96f);
+            GUI.DrawTexture(new Rect(x, y, w * t, h), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+            GUI.Label(new Rect(x, y - 22f, w, 22), "<b>The Architect</b>", _labelStyle);
+            GUI.color = prev;
         }
 
         private void DrawActiveBuffs(int startX, int startY)

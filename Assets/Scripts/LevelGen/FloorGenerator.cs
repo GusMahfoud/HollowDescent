@@ -350,11 +350,12 @@ namespace HollowDescent.LevelGen
             _rooms.Add(combat1);
 
             cx += stepX;
+            // Match combat room width/depth so corridor walls and door gaps line up (W+2/D+2 caused mismatched wall segments at the junction).
             var finalBoss = new RoomDef
             {
                 Center = new Vector3(cx, 0f, cz),
-                W = roomWidth + 2f,
-                D = roomDepth + 2f,
+                W = roomWidth,
+                D = roomDepth,
                 Type = RoomType.FinalBoss,
                 Name = "The Architect",
                 Doors = new List<DoorLink>(),
@@ -408,6 +409,8 @@ namespace HollowDescent.LevelGen
             {
                 if (door.IsLevelExit)
                 {
+                    if (r.Type == RoomType.LevelExit)
+                        continue;
                     var exitTriggerGo = new GameObject("LevelExitTrigger");
                     exitTriggerGo.transform.SetParent(parent);
                     exitTriggerGo.transform.position = door.Position + door.Normal * 1f + Vector3.up * (wallHeight * 0.5f);
@@ -463,15 +466,17 @@ namespace HollowDescent.LevelGen
 
         private void PlaceLevelExitObject(Transform parent, RoomDef r)
         {
-            var exitObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            exitObj.name = "LevelExit_ToLevel2";
+            var exitObj = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            exitObj.name = "LevelExitPortal";
             exitObj.transform.SetParent(parent);
-            exitObj.transform.position = r.Center + new Vector3(0f, 1.2f, 0f);
-            exitObj.transform.localScale = new Vector3(2.5f, 2.5f, 2.5f);
+            exitObj.transform.position = r.Center + new Vector3(0f, 1.15f, 0f);
+            exitObj.transform.localScale = new Vector3(2f, 2f, 2f);
             var rend = exitObj.GetComponent<Renderer>();
             if (rend != null) GrayboxTintUtil.Apply(rend, new Color(0.2f, 0.6f, 1f));
-            var col = exitObj.GetComponent<Collider>();
-            if (col != null) col.isTrigger = true;
+            Object.Destroy(exitObj.GetComponent<Collider>());
+            var sph = exitObj.AddComponent<SphereCollider>();
+            sph.isTrigger = true;
+            sph.radius = 0.52f;
             var lev = exitObj.AddComponent<LevelExitTrigger>();
             lev.SetTargetLevel(_floorGenLevelIndex + 1);
         }

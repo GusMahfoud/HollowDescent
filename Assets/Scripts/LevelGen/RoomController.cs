@@ -478,19 +478,28 @@ namespace HollowDescent.LevelGen
         private void SpawnRewardMarker()
         {
             if (_rewardMarker != null) return;
-            var center = _trigger != null ? _trigger.bounds.center : transform.position;
-            _rewardMarker = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            _rewardMarker.name = "RewardMarker";
-            _rewardMarker.transform.position = center + Vector3.up * 0.6f;
-            _rewardMarker.transform.localScale = new Vector3(0.8f, 0.8f, 0.8f);
-            var col = _rewardMarker.GetComponent<Collider>();
-            if (col != null)
-            {
-                col.enabled = true;
-                col.isTrigger = true;
-            }
-            var r = _rewardMarker.GetComponent<Renderer>();
-            if (r != null) GrayboxTintUtil.Apply(r, new Color(1f, 0.9f, 0.2f));
+            // Anchor to room controller pivot (floor center). Using trigger world bounds can offset the reward outside the visible room.
+            _rewardMarker = new GameObject("RewardMarker");
+            _rewardMarker.transform.SetParent(transform, false);
+            _rewardMarker.transform.localPosition = new Vector3(0f, 0.85f, 0f);
+            _rewardMarker.transform.localRotation = Quaternion.identity;
+
+            var sc = _rewardMarker.AddComponent<SphereCollider>();
+            sc.isTrigger = true;
+            sc.radius = 0.95f;
+            sc.center = Vector3.zero;
+
+            var coin = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            coin.name = "CoinVisual";
+            var coinCol = coin.GetComponent<Collider>();
+            if (coinCol != null) Destroy(coinCol);
+            coin.transform.SetParent(_rewardMarker.transform, false);
+            coin.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            coin.transform.localScale = new Vector3(1.45f, 0.06f, 1.45f);
+            coin.transform.localPosition = Vector3.zero;
+            var coinR = coin.GetComponent<Renderer>();
+            if (coinR != null) GrayboxTintUtil.Apply(coinR, new Color(1f, 0.82f, 0.12f));
+
             var pickup = _rewardMarker.AddComponent<RewardPickup>();
             pickup.SetAmount(roomType == RoomType.FinalBoss ? 60 : (roomType == RoomType.Boss ? 40 : 15));
         }
