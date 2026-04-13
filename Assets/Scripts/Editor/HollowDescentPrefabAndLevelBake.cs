@@ -34,19 +34,22 @@ namespace HollowDescent.EditorTools
         [MenuItem("Hollow Descent/Setup/Bake Level_02 Prefab")]
         public static void MenuBakeLevel2() => BakeLevelPrefab(2);
 
+        [MenuItem("Hollow Descent/Setup/Bake Level_03 Prefab")]
+        public static void MenuBakeLevel3() => BakeLevelPrefab(3);
+
         /// <summary>Batchmode / CI: -executeMethod HollowDescent.EditorTools.HollowDescentPrefabAndLevelBake.BatchFullSetup</summary>
         public static void BatchFullSetup()
         {
             RunFullSetupCore();
         }
 
-        [MenuItem("Hollow Descent/Setup/Full Setup (Characters + Both Levels)")]
+        [MenuItem("Hollow Descent/Setup/Full Setup (Characters + All Levels)")]
         public static void MenuFullSetup()
         {
             RunFullSetupCore();
             EditorUtility.DisplayDialog(
                 "Hollow Descent",
-                "Created Player + NarrativeWitnessNPC prefabs and Level_01 / Level_02 under Assets/Resources/Prefabs.\n\n" +
+                "Created Player + NarrativeWitnessNPC prefabs and Level_01 / Level_02 / Level_03 under Assets/Resources/Prefabs.\n\n" +
                 "If AI uses NavMesh, open each level prefab and bake navigation data for static geometry.",
                 "OK");
         }
@@ -58,6 +61,7 @@ namespace HollowDescent.EditorTools
             CreateWitnessPrefabAsset();
             BakeLevelPrefab(1);
             BakeLevelPrefab(2);
+            BakeLevelPrefab(3);
             AssetDatabase.Refresh();
         }
 
@@ -82,21 +86,10 @@ namespace HollowDescent.EditorTools
 
         private static void CreatePlayerPrefabAsset()
         {
-            var go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            go.name = "Player";
-            go.tag = "Player";
-            var col = go.GetComponent<Collider>();
-            if (col != null) col.isTrigger = false;
-            var rb = go.GetComponent<Rigidbody>();
-            if (rb == null) rb = go.AddComponent<Rigidbody>();
-            rb.isKinematic = false;
-            rb.useGravity = false;
-            rb.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY;
-            rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+            var go = SimpleFigureVisuals.CreatePlayerFallback(Vector3.zero);
             go.AddComponent<PlayerControllerTopDown>();
             go.AddComponent<PlayerHealth>();
             go.AddComponent<PlayerHitFlash>();
-            go.transform.position = Vector3.zero;
 
             PersistLitMaterialsForHierarchy(go);
             var path = CharactersDir + "/Player.prefab";
@@ -106,13 +99,8 @@ namespace HollowDescent.EditorTools
 
         private static void CreateWitnessPrefabAsset()
         {
-            var npc = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            npc.name = "NarrativeWitnessNPC";
-            npc.transform.localScale = new Vector3(1.2f, 1.25f, 1.2f);
-            var npcRenderer = npc.GetComponent<Renderer>();
-            if (npcRenderer != null) GrayboxTintUtil.Apply(npcRenderer, new Color(0.75f, 0.75f, 0.85f));
-            var col = npc.GetComponent<Collider>();
-            if (col != null) col.isTrigger = false;
+            var npc = SimpleFigureVisuals.CreateWitnessNpcFallback(Vector3.zero);
+            npc.transform.localScale = new Vector3(1.15f, 1.2f, 1.15f);
             var agent = npc.AddComponent<NavMeshAgent>();
             agent.speed = 3.2f;
             agent.angularSpeed = 720f;

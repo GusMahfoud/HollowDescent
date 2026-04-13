@@ -38,7 +38,11 @@ namespace HollowDescent.AI
             {
                 var health = other.GetComponent<PlayerHealth>();
                 if (health != null && health.TakeDamage(_damage))
-                    _owner?.RegisterSuccessfulPlayerHit(other.transform);
+                {
+                    var own = _owner;
+                    if (own != null)
+                        own.RegisterSuccessfulPlayerHit(other.transform);
+                }
                 Destroy(gameObject);
             }
         }

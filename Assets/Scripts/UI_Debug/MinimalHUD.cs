@@ -63,7 +63,7 @@ namespace HollowDescent.UI_Debug
             { "L2 Start", "Deeper. The walls shift when you're not looking." },
             { "L2 Combat 1", "The trials grow restless." },
             { "L2 Combat 2", "Containment failed long ago." },
-            { "L2 Safe", "Even here, a brief reprieve." },
+            { "L2 Merchant (Safe)", "Echoes trade hands. Stock meant for those who go deeper." },
             { "L2 Boss", "The gauntlet before the last door." },
             { "To Level 3", "One more descent. The heart of the Hollow." },
             { "Level 3 Start (Safe)", "The architecture ends. Whatever built this is waiting." },
@@ -280,15 +280,17 @@ namespace HollowDescent.UI_Debug
             GUI.color = prevColor;
 
             const float boxW = 560f;
-            const float boxH = 400f;
+            const float boxH = 520f;
             GUILayout.BeginArea(new Rect((Screen.width - boxW) * 0.5f, (Screen.height - boxH) * 0.5f, boxW, boxH));
             GUILayout.Label("Run ended", _deathTitleStyle);
             GUILayout.Label("The Hollow claims another. Your echoes fade into silence.", _deathBodyStyle);
             GUILayout.Space(8f);
             DrawRunStats();
             GUILayout.Space(12f);
-            if (GUILayout.Button("Restart from Level 1", _fullScreenButtonStyle) && gm != null)
-                gm.RestartFromLevelOne();
+            if (GUILayout.Button("Restart from Level 1", _fullScreenButtonStyle))
+            {
+                if (gm != null) gm.RestartFromLevelOne();
+            }
             GUILayout.EndArea();
         }
 
@@ -317,7 +319,7 @@ namespace HollowDescent.UI_Debug
             GUI.color = prevColor;
 
             const float boxW = 560f;
-            const float boxH = 400f;
+            const float boxH = 520f;
             GUILayout.BeginArea(new Rect((Screen.width - boxW) * 0.5f, (Screen.height - boxH) * 0.5f, boxW, boxH));
             GUILayout.Label("Run Complete!", _deathTitleStyle);
             GUILayout.Label("The final trial falls silent. The architects would be proud... or terrified.", _deathBodyStyle);
@@ -422,6 +424,7 @@ namespace HollowDescent.UI_Debug
         /// </summary>
         public void QueueFinalEndingSequence()
         {
+            RunState.Instance?.FreezeRunTimer();
             _endingLines = DefaultFinalEndingLines;
             _endingLineIndex = 0;
             _showEndingDialogue = true;

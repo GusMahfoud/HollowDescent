@@ -1,5 +1,6 @@
 using System.Collections;
 using UnityEngine;
+using HollowDescent.Gameplay;
 using HollowDescent.LevelGen;
 
 namespace HollowDescent.AI
@@ -36,9 +37,11 @@ namespace HollowDescent.AI
             ApplyRuntimeCombatStats(bossMaxHealth, bossContactDamage);
             ApplyMovementProfile(2.1f);
             transform.localScale = Vector3.one * 2.1f;
-            var r = GetComponent<Renderer>();
-            if (r != null)
-                GrayboxTintUtil.Apply(r, new Color(0.22f, 0.05f, 0.38f));
+            var tint = new Color(0.22f, 0.05f, 0.38f);
+            foreach (var r in GetComponentsInChildren<Renderer>())
+            {
+                if (r != null) GrayboxTintUtil.Apply(r, tint);
+            }
         }
 
         private void OnDisable()
@@ -76,18 +79,8 @@ namespace HollowDescent.AI
                     pos = transform.position + (away.sqrMagnitude > 0.01f ? away.normalized : Vector3.right) * 5f;
             }
 
-            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            go.name = "Enemy_BossMinion";
-            go.transform.position = pos + Vector3.up * 0.6f;
-            go.transform.localScale = new Vector3(0.65f, 0.85f, 0.65f);
-            var col = go.GetComponent<Collider>();
-            if (col != null) col.isTrigger = false;
-            var rb = go.AddComponent<Rigidbody>();
-            rb.useGravity = false;
-            rb.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY;
-            rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
-            GrayboxTintUtil.Apply(go.GetComponent<Renderer>(), new Color(0.55f, 0.12f, 0.45f));
-            var chaser = go.AddComponent<EnemyChaser>();
+            var go = SimpleFigureVisuals.CreateBossMinion(pos);
+            var chaser = go.GetComponent<EnemyChaser>();
             chaser.SetPlayer(player != null ? player.transform : null);
             chaser.ApplyMovementProfile(minionMoveSpeed);
             chaser.ApplyRuntimeCombatStats(2, 1);

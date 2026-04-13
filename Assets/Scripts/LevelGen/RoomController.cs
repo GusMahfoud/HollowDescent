@@ -93,7 +93,7 @@ namespace HollowDescent.LevelGen
 
         private void Start()
         {
-            _isShopRoom = roomName == "Shop (Safe)";
+            _isShopRoom = roomName == "Shop (Safe)" || roomName == "L2 Merchant (Safe)";
             // Rooms should be traversable by default; combat rooms lock only once encounter starts.
             SetDoorsOpen(true, true);
         }
@@ -282,15 +282,7 @@ namespace HollowDescent.LevelGen
 
         private static GameObject CreateFinalBossPrimitive(Vector3 pos)
         {
-            var go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            go.name = "Enemy_FinalBoss";
-            go.transform.position = pos + Vector3.up * 1f;
-            var col = go.GetComponent<Collider>();
-            if (col != null) col.isTrigger = false;
-            var rb = go.AddComponent<Rigidbody>();
-            rb.useGravity = false;
-            rb.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY;
-            rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
+            var go = SimpleFigureVisuals.CreateFinalBossEnemy(pos);
             go.AddComponent<EnemyFinalBoss>();
             return go;
         }
@@ -409,67 +401,24 @@ namespace HollowDescent.LevelGen
         private static void MaybeTintRuntimePrimitive(EnemyBase eb, System.Random rng, bool flanker, bool shooter)
         {
             if (eb == null || !eb.gameObject.name.StartsWith("Enemy_", StringComparison.Ordinal)) return;
-            var r = eb.GetComponent<Renderer>();
-            if (r == null) return;
+            Color c;
             if (flanker)
-                GrayboxTintUtil.Apply(r, new Color(0.5f + (float)rng.NextDouble() * 0.25f, 0.1f, 0.5f + (float)rng.NextDouble() * 0.22f));
+                c = new Color(0.5f + (float)rng.NextDouble() * 0.25f, 0.1f, 0.5f + (float)rng.NextDouble() * 0.22f);
             else if (shooter)
-                GrayboxTintUtil.Apply(r, new Color(0.78f + (float)rng.NextDouble() * 0.15f, 0.32f + (float)rng.NextDouble() * 0.18f, 0.06f));
+                c = new Color(0.78f + (float)rng.NextDouble() * 0.15f, 0.32f + (float)rng.NextDouble() * 0.18f, 0.06f);
             else
-                GrayboxTintUtil.Apply(r, new Color(0.85f + (float)rng.NextDouble() * 0.1f, 0.1f + (float)rng.NextDouble() * 0.18f, 0.1f + (float)rng.NextDouble() * 0.18f));
+                c = new Color(0.85f + (float)rng.NextDouble() * 0.1f, 0.1f + (float)rng.NextDouble() * 0.18f, 0.1f + (float)rng.NextDouble() * 0.18f);
+            foreach (var r in eb.GetComponentsInChildren<Renderer>())
+            {
+                if (r != null) GrayboxTintUtil.Apply(r, c);
+            }
         }
 
-        private GameObject CreateChaserPrimitive(Vector3 pos)
-        {
-            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            go.name = "Enemy_Chaser";
-            go.transform.position = pos;
-            go.transform.localScale = new Vector3(0.9f, 1.2f, 0.9f);
-            var col = go.GetComponent<Collider>();
-            if (col != null) col.isTrigger = false;
-            var rb = go.AddComponent<Rigidbody>();
-            rb.useGravity = false;
-            rb.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY;
-            rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
-            GrayboxTintUtil.Apply(go.GetComponent<Renderer>(), new Color(0.9f, 0.2f, 0.2f));
-            var chaser = go.AddComponent<EnemyChaser>();
-            chaser.SetPlayer(GameObject.FindGameObjectWithTag("Player")?.transform);
-            return go;
-        }
+        private GameObject CreateChaserPrimitive(Vector3 pos) => SimpleFigureVisuals.CreateChaserEnemy(pos);
 
-        private GameObject CreateShooterPrimitive(Vector3 pos)
-        {
-            var go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            go.name = "Enemy_Shooter";
-            go.transform.position = pos;
-            go.transform.localScale = new Vector3(0.8f, 1f, 0.8f);
-            var col = go.GetComponent<Collider>();
-            if (col != null) col.isTrigger = false;
-            var rb = go.AddComponent<Rigidbody>();
-            rb.useGravity = false;
-            rb.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY;
-            GrayboxTintUtil.Apply(go.GetComponent<Renderer>(), new Color(0.8f, 0.4f, 0.1f));
-            var shooter = go.AddComponent<EnemyShooter>();
-            shooter.SetPlayer(GameObject.FindGameObjectWithTag("Player")?.transform);
-            return go;
-        }
+        private GameObject CreateShooterPrimitive(Vector3 pos) => SimpleFigureVisuals.CreateShooterEnemy(pos);
 
-        private GameObject CreateFlankerPrimitive(Vector3 pos)
-        {
-            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            go.name = "Enemy_Flanker";
-            go.transform.position = pos;
-            go.transform.localScale = new Vector3(0.7f, 1f, 0.7f);
-            var col = go.GetComponent<Collider>();
-            if (col != null) col.isTrigger = false;
-            var rb = go.AddComponent<Rigidbody>();
-            rb.useGravity = false;
-            rb.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY;
-            GrayboxTintUtil.Apply(go.GetComponent<Renderer>(), new Color(0.6f, 0.2f, 0.6f));
-            var flanker = go.AddComponent<EnemyFlanker>();
-            flanker.SetPlayer(GameObject.FindGameObjectWithTag("Player")?.transform);
-            return go;
-        }
+        private GameObject CreateFlankerPrimitive(Vector3 pos) => SimpleFigureVisuals.CreateFlankerEnemy(pos);
 
         private void OnEnemyDied(EnemyBase enemy)
         {

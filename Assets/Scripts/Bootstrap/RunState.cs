@@ -16,13 +16,22 @@ namespace HollowDescent.Bootstrap
         public int DamageTaken { get; private set; }
         public bool RunComplete { get; private set; }
         public float RunStartTime { get; private set; }
+        /// <summary>When set, <see cref="GetRunTimeFormatted"/> uses this instead of live unscaled time (e.g. after game over while timeScale is 0).</summary>
+        public float? FrozenRunElapsedSeconds { get; private set; }
 
         public string GetRunTimeFormatted()
         {
-            var elapsed = Time.unscaledTime - RunStartTime;
+            var elapsed = FrozenRunElapsedSeconds ?? Mathf.Max(0f, Time.unscaledTime - RunStartTime);
             var mins = Mathf.FloorToInt(elapsed / 60f);
             var secs = Mathf.FloorToInt(elapsed % 60f);
             return $"{mins}m {secs:00}s";
+        }
+
+        /// <summary>Locks displayed run time to the current value (idempotent). Call on final death, victory, or when the ending sequence starts.</summary>
+        public void FreezeRunTimer()
+        {
+            if (FrozenRunElapsedSeconds.HasValue) return;
+            FrozenRunElapsedSeconds = Mathf.Max(0f, Time.unscaledTime - RunStartTime);
         }
 
         public void AddCurrency(int amount)
@@ -43,7 +52,11 @@ namespace HollowDescent.Bootstrap
 
         public void RecordDamageTaken(int amount) => DamageTaken += Mathf.Max(0, amount);
 
-        public void MarkRunComplete() => RunComplete = true;
+        public void MarkRunComplete()
+        {
+            RunComplete = true;
+            FreezeRunTimer();
+        }
 
         public void ResetForNewRun()
         {
@@ -52,6 +65,7 @@ namespace HollowDescent.Bootstrap
             RoomsCleared = 0;
             DamageTaken = 0;
             RunComplete = false;
+            FrozenRunElapsedSeconds = null;
             RunStartTime = Time.unscaledTime;
 
             var playerGo = GameObject.FindGameObjectWithTag("Player");

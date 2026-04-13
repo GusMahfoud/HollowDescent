@@ -149,10 +149,7 @@ namespace HollowDescent.Bootstrap
                 return;
             }
 
-            _player = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            _player.name = "Player";
-            _player.transform.position = new Vector3(0f, 1f, 0f);
-            _player.tag = "Player";
+            _player = SimpleFigureVisuals.CreatePlayerFallback(Vector3.zero);
             ConfigurePlayerPhysics(_player);
             _player.AddComponent<PlayerControllerTopDown>();
             _player.AddComponent<PlayerHealth>();
@@ -323,13 +320,9 @@ namespace HollowDescent.Bootstrap
 
                 if (witnessPrefab == null)
                 {
-                    npc = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-                    npc.name = "NarrativeWitnessNPC";
+                    npc = SimpleFigureVisuals.CreateWitnessNpcFallback(roomCenter + new Vector3(-2.2f, 0f, 0.8f));
                     npc.transform.SetParent(roomGeometry);
-                    npc.transform.position = roomCenter + new Vector3(-2.2f, 1f, 0.8f);
-                    npc.transform.localScale = new Vector3(1.2f, 1.25f, 1.2f);
-                    var npcRenderer = npc.GetComponent<Renderer>();
-                    if (npcRenderer != null) GrayboxTintUtil.Apply(npcRenderer, new Color(0.75f, 0.75f, 0.85f));
+                    npc.transform.localScale = new Vector3(1.15f, 1.2f, 1.15f);
                     if (NavMesh.SamplePosition(npc.transform.position, out _, 2f, NavMesh.AllAreas))
                     {
                         var npcAgent = npc.AddComponent<NavMeshAgent>();

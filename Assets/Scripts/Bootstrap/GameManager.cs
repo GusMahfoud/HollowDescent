@@ -53,6 +53,7 @@ namespace HollowDescent.Bootstrap
 
             remainingLives = 0;
             DeathScreenOpen = true;
+            RunState.Instance?.FreezeRunTimer();
             Time.timeScale = 0f;
         }
 

@@ -270,21 +270,6 @@ namespace HollowDescent.LevelGen
             _rooms.Add(combat2);
 
             cx += stepX;
-            var safe = new RoomDef
-            {
-                Center = new Vector3(cx, 0f, cz),
-                W = roomWidth,
-                D = roomDepth,
-                Type = RoomType.Safe,
-                Name = "L2 Safe",
-                Doors = new List<DoorLink>(),
-                Index = 3
-            };
-            safe.Doors.Add(new DoorLink { Position = safe.Center + Vector3.left * (roomWidth * 0.5f), Normal = Vector3.left, Width = corridorWidth, IsLevelExit = false });
-            safe.Doors.Add(new DoorLink { Position = safe.Center + Vector3.right * (roomWidth * 0.5f), Normal = Vector3.right, Width = corridorWidth, IsLevelExit = false });
-            _rooms.Add(safe);
-
-            cx += stepX;
             var boss = new RoomDef
             {
                 Center = new Vector3(cx, 0f, cz),
@@ -293,11 +278,26 @@ namespace HollowDescent.LevelGen
                 Type = RoomType.Combat,
                 Name = "L2 Boss",
                 Doors = new List<DoorLink>(),
-                Index = 4
+                Index = 3
             };
             boss.Doors.Add(new DoorLink { Position = boss.Center + Vector3.left * (roomWidth * 0.5f), Normal = Vector3.left, Width = corridorWidth, IsLevelExit = false });
             boss.Doors.Add(new DoorLink { Position = boss.Center + Vector3.right * (roomWidth * 0.5f), Normal = Vector3.right, Width = corridorWidth, IsLevelExit = false });
             _rooms.Add(boss);
+
+            cx += stepX;
+            var merchant = new RoomDef
+            {
+                Center = new Vector3(cx, 0f, cz),
+                W = roomWidth,
+                D = roomDepth,
+                Type = RoomType.Safe,
+                Name = "L2 Merchant (Safe)",
+                Doors = new List<DoorLink>(),
+                Index = 4
+            };
+            merchant.Doors.Add(new DoorLink { Position = merchant.Center + Vector3.left * (roomWidth * 0.5f), Normal = Vector3.left, Width = corridorWidth, IsLevelExit = false });
+            merchant.Doors.Add(new DoorLink { Position = merchant.Center + Vector3.right * (roomWidth * 0.5f), Normal = Vector3.right, Width = corridorWidth, IsLevelExit = false });
+            _rooms.Add(merchant);
 
             cx += stepX;
             var toL3 = new RoomDef
@@ -670,7 +670,7 @@ namespace HollowDescent.LevelGen
                 rc.RegisterSpawnPoint(spFlank.transform, true);
             }
 
-            if (r.Name == "Shop (Safe)")
+            if (r.Name == "Shop (Safe)" || r.Name == "L2 Merchant (Safe)")
             {
                 go.AddComponent<ShopTrigger>();
             }
@@ -687,6 +687,8 @@ namespace HollowDescent.LevelGen
                 narrativeLines = new[] { "The architecture ends here. Whatever built this is waiting." };
             else if (r.Name == "The Architect")
                 narrativeLines = new[] { "Face it. There is nothing behind you anymore." };
+            else if (r.Name == "L2 Merchant (Safe)")
+                narrativeLines = new[] { "Echoes trade hands. The deeper merchant remembers older prices." };
 
             if (narrativeLines != null)
             {

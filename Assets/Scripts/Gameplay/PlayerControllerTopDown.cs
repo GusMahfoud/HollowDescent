@@ -15,7 +15,7 @@ namespace HollowDescent.Gameplay
         [Header("Combat")]
         [SerializeField] private float fireRate = 0.5f;
         [SerializeField] private float projectileSpeed = 18f;
-        [SerializeField] private float projectileLifetime = 2f;
+        [SerializeField] private float projectileLifetime = 4f;
         [SerializeField] private float projectileRadius = 0.25f;
         [SerializeField] private float projectileSpawnHeight = 0f;
 

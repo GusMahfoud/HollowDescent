@@ -189,7 +189,8 @@ namespace HollowDescent.Bootstrap
 
             var patch = new GameObject("LevelPatch_ToLevel3");
             patch.transform.SetParent(levelRoot, false);
-            patch.transform.position = new Vector3(86f, 0f, 0f);
+            // After L2 Boss (x≈54) and L2 Merchant (x≈72); exit corridor sits at next slot (x≈90).
+            patch.transform.position = new Vector3(90f, 0f, 0f);
 
             var roomGo = new GameObject("Room_To Level 3");
             roomGo.transform.SetParent(patch.transform, false);

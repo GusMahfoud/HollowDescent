@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -32,6 +33,8 @@ namespace HollowDescent.Gameplay
         }
 
         private List<ShopItem> _items;
+        private bool _useDeepMerchantTitle;
+        private string _activeCatalogKey = "";
         private GUIStyle _titleStyle;
         private GUIStyle _bodyStyle;
         private GUIStyle _buttonStyle;
@@ -47,7 +50,7 @@ namespace HollowDescent.Gameplay
                 return;
             }
             Instance = this;
-            InitInventory();
+            InitDefaultInventory();
         }
 
         private void OnDestroy()
@@ -55,14 +58,26 @@ namespace HollowDescent.Gameplay
             if (Instance == this) Instance = null;
         }
 
-        private void InitInventory()
+        private void InitDefaultInventory()
         {
             _items = new List<ShopItem>
             {
-                new ShopItem { Name = "Swift Boots", Description = "Worn by the Hollow's couriers (+5 speed)", Cost = 20, Buff = BuffType.MoveSpeed, BuffValue = 5f },
+                new ShopItem { Name = "Swift Boots", Description = "Worn by the Hollow's couriers (+5 move speed)", Cost = 20, Buff = BuffType.MoveSpeed, BuffValue = 5f },
                 new ShopItem { Name = "Rapid Fire", Description = "Etched with acceleration glyphs (0.7x fire delay)", Cost = 25, Buff = BuffType.FireRate, BuffValue = 0.7f },
                 new ShopItem { Name = "Vitality Shard", Description = "A fragment of living stone (+2 max HP)", Cost = 30, Buff = BuffType.MaxHealth, BuffValue = 2f },
                 new ShopItem { Name = "Sharp Rounds", Description = "Tipped with crystallized venom (1.5x damage)", Cost = 35, Buff = BuffType.Damage, BuffValue = 1.5f },
+            };
+        }
+
+        /// <summary>Exclusive stock for the Level 2 merchant (before descending to Level 3).</summary>
+        private void InitDeepMerchantInventory()
+        {
+            _items = new List<ShopItem>
+            {
+                new ShopItem { Name = "Nullthread Cloak", Description = "Spun from whatever the walls shed at night (+6 move speed)", Cost = 45, Buff = BuffType.MoveSpeed, BuffValue = 6f },
+                new ShopItem { Name = "Core Overcharge", Description = "Bypasses the safety seal; your hands hum (0.55x fire delay)", Cost = 55, Buff = BuffType.FireRate, BuffValue = 0.55f },
+                new ShopItem { Name = "Heartglass Reliquary", Description = "Three vials of someone else's pulse (+3 max HP)", Cost = 62, Buff = BuffType.MaxHealth, BuffValue = 3f },
+                new ShopItem { Name = "Spire Needles", Description = "Carved from the Architect's cast-offs (1.65x damage)", Cost = 70, Buff = BuffType.Damage, BuffValue = 1.65f },
             };
         }
 
@@ -70,6 +85,19 @@ namespace HollowDescent.Gameplay
         {
             InShopRoom = true;
             IsOpen = true;
+            var gm = GameManager.Instance;
+            var rn = gm != null ? gm.CurrentRoomName : "";
+            var deep = !string.IsNullOrEmpty(rn) && rn.IndexOf("Merchant", StringComparison.OrdinalIgnoreCase) >= 0;
+            _useDeepMerchantTitle = deep;
+            var key = deep ? "deep" : "default";
+            if (key != _activeCatalogKey)
+            {
+                _activeCatalogKey = key;
+                if (deep)
+                    InitDeepMerchantInventory();
+                else
+                    InitDefaultInventory();
+            }
         }
 
         public void ExitShopRoom()
@@ -84,12 +112,9 @@ namespace HollowDescent.Gameplay
 
         public void ResetShop()
         {
-            for (var i = 0; i < _items.Count; i++)
-            {
-                var item = _items[i];
-                item.Purchased = false;
-                _items[i] = item;
-            }
+            _useDeepMerchantTitle = false;
+            _activeCatalogKey = "";
+            InitDefaultInventory();
         }
 
         private void Update()
@@ -159,7 +184,7 @@ namespace HollowDescent.Gameplay
             var inset = 20;
             GUILayout.BeginArea(new Rect(x + inset, y + inset, panelWidth - inset * 2, panelHeight - inset * 2));
 
-            GUILayout.Label("The Merchant's Cache", _titleStyle);
+            GUILayout.Label(_useDeepMerchantTitle ? "The Deep Merchant" : "The Merchant's Cache", _titleStyle);
             GUILayout.Space(4);
 
             var currency = RunState.Instance != null ? RunState.Instance.Currency : 0;
