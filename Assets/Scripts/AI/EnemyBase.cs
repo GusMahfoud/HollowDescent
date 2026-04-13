@@ -21,6 +21,9 @@ namespace HollowDescent.AI
 
         protected int CurrentHealth;
         public event Action<EnemyBase> OnDeath;
+
+        public int GetCurrentHealth() => CurrentHealth;
+        public int GetMaxHealth() => maxHealth;
         private Coroutine _stunCoroutine;
         private bool _movementLocked;
         private bool _pursuitEnabled = true;
@@ -36,6 +39,12 @@ namespace HollowDescent.AI
             }
         }
 
+        private void Start()
+        {
+            if (GetComponent<EnemyHitFlash>() == null)
+                gameObject.AddComponent<EnemyHitFlash>();
+        }
+
         private void OnDisable()
         {
             if (_stunCoroutine != null)
@@ -49,6 +58,9 @@ namespace HollowDescent.AI
         public virtual void TakeDamage(int amount)
         {
             CurrentHealth -= amount;
+            var hitFlash = GetComponent<EnemyHitFlash>();
+            if (hitFlash == null) hitFlash = gameObject.AddComponent<EnemyHitFlash>();
+            hitFlash.PlayHitFlash();
             if (CurrentHealth <= 0)
                 Die();
         }

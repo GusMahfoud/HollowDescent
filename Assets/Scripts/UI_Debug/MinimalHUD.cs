@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using HollowDescent.AI;
 using HollowDescent.Bootstrap;
 using HollowDescent.Gameplay;
 using UnityEngine;
@@ -63,8 +64,12 @@ namespace HollowDescent.UI_Debug
             { "L2 Start", "Deeper. The walls shift when you're not looking." },
             { "L2 Combat 1", "The trials grow restless." },
             { "L2 Combat 2", "Containment failed long ago." },
-            { "L2 Safe", "Even here, a brief reprieve." },
-            { "L2 Boss", "The final trial awaits." },
+            { "L2 Merchant (Safe)", "Echoes trade hands. Stock meant for those who go deeper." },
+            { "L2 Boss", "The gauntlet before the last door." },
+            { "To Level 3", "One more descent. The heart of the Hollow." },
+            { "Level 3 Start (Safe)", "The architecture ends. Whatever built this is waiting." },
+            { "L3 Combat 1", "The floor remembers every footstep." },
+            { "The Architect", "It was never meant to be contained." },
         };
 
         // Room Cleared flash
@@ -72,6 +77,19 @@ namespace HollowDescent.UI_Debug
         private string _clearedText;
         private float _clearedShowTime;
         private float _clearedDuration = 2.5f;
+
+        // Final boss → ending lines (before victory / run-complete screen)
+        private bool _showEndingDialogue;
+        private string[] _endingLines;
+        private int _endingLineIndex;
+
+        private static readonly string[] DefaultFinalEndingLines =
+        {
+            "The Architect unravels into violet dust.",
+            "What you defeated was only a caretaker—something older still watches from the seams.",
+            "The Hollow loosens its grip. Light finds you again, thin but real.",
+            "For now, you are free."
+        };
 
         private void OnGUI()
         {
@@ -199,6 +217,14 @@ namespace HollowDescent.UI_Debug
             if (_labelStyle == null || _legendTitleStyle == null || _rowStyle == null || _legendToggleStyle == null || _lifeTitleStyle == null || _lifeHeartStyle == null ||
                 _deathTitleStyle == null || _deathBodyStyle == null || _fullScreenButtonStyle == null || _currencyStyle == null || _buffStyle == null) return;
 
+            DrawRoomClearedFlash();
+
+            if (_showEndingDialogue)
+            {
+                DrawFinalEndingDialogue();
+                return;
+            }
+
             var gm = GameManager.Instance;
             var room = gm != null ? gm.CurrentRoomName : "\u2014";
             var enemies = gm != null ? gm.EnemiesRemainingInRoom : 0;
@@ -212,7 +238,7 @@ namespace HollowDescent.UI_Debug
                 DrawCurrencyDisplay();
                 DrawFlavorSubtitle();
             }
-            DrawRoomClearedFlash();
+            DrawBossHealthBarIfNeeded();
             DrawPlayerLivesTopRight();
             DrawLegendSectionBottomLeft();
             DrawMainMenuButton();
@@ -257,15 +283,17 @@ namespace HollowDescent.UI_Debug
             GUI.color = prevColor;
 
             const float boxW = 560f;
-            const float boxH = 400f;
+            const float boxH = 520f;
             GUILayout.BeginArea(new Rect((Screen.width - boxW) * 0.5f, (Screen.height - boxH) * 0.5f, boxW, boxH));
             GUILayout.Label("Run ended", _deathTitleStyle);
             GUILayout.Label("The Hollow claims another. Your echoes fade into silence.", _deathBodyStyle);
             GUILayout.Space(8f);
             DrawRunStats();
             GUILayout.Space(12f);
-            if (GUILayout.Button("Restart from Level 1", _fullScreenButtonStyle) && gm != null)
-                gm.RestartFromLevelOne();
+            if (GUILayout.Button("Restart from Level 1", _fullScreenButtonStyle))
+            {
+                if (gm != null) gm.RestartFromLevelOne();
+            }
             GUILayout.EndArea();
         }
 
@@ -294,7 +322,7 @@ namespace HollowDescent.UI_Debug
             GUI.color = prevColor;
 
             const float boxW = 560f;
-            const float boxH = 400f;
+            const float boxH = 520f;
             GUILayout.BeginArea(new Rect((Screen.width - boxW) * 0.5f, (Screen.height - boxH) * 0.5f, boxW, boxH));
             GUILayout.Label("Run Complete!", _deathTitleStyle);
             GUILayout.Label("The final trial falls silent. The architects would be proud... or terrified.", _deathBodyStyle);
@@ -381,10 +409,56 @@ namespace HollowDescent.UI_Debug
 
         public void NotifyRoomCleared(int echoesAwarded, bool isBoss)
         {
-            _clearedText = isBoss
-                ? $"Boss Defeated! +{echoesAwarded} Echoes"
-                : $"Room Cleared! +{echoesAwarded} Echoes";
+            NotifyRoomCleared(echoesAwarded, isBoss, false);
+        }
+
+        public void NotifyRoomCleared(int echoesAwarded, bool isBoss, bool isFinalBoss)
+        {
+            _clearedText = isFinalBoss
+                ? $"The Architect falls! +{echoesAwarded} Echoes"
+                : isBoss
+                    ? $"Boss Defeated! +{echoesAwarded} Echoes"
+                    : $"Room Cleared! +{echoesAwarded} Echoes";
             _clearedShowTime = Time.unscaledTime;
+        }
+
+        /// <summary>
+        /// Called when the Level 3 final boss is defeated. Shows story beats, then <see cref="RunState.MarkRunComplete"/>.
+        /// </summary>
+        public void QueueFinalEndingSequence()
+        {
+            RunState.Instance?.FreezeRunTimer();
+            _endingLines = DefaultFinalEndingLines;
+            _endingLineIndex = 0;
+            _showEndingDialogue = true;
+        }
+
+        private void DrawFinalEndingDialogue()
+        {
+            if (_deathTitleStyle == null || _deathBodyStyle == null || _fullScreenButtonStyle == null) return;
+
+            GUI.depth = -129;
+            var prevColor = GUI.color;
+            GUI.color = new Color(0f, 0f, 0f, 0.88f);
+            GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
+            GUI.color = prevColor;
+
+            const float boxW = 560f;
+            GUILayout.BeginArea(new Rect((Screen.width - boxW) * 0.5f, Screen.height * 0.18f, boxW, 460f));
+            GUILayout.Label("Epilogue", _deathTitleStyle);
+            if (_endingLines != null && _endingLineIndex >= 0 && _endingLineIndex < _endingLines.Length)
+                GUILayout.Label(_endingLines[_endingLineIndex], _deathBodyStyle);
+            GUILayout.Space(20f);
+            if (GUILayout.Button("Continue", _fullScreenButtonStyle))
+            {
+                _endingLineIndex++;
+                if (_endingLines == null || _endingLineIndex >= _endingLines.Length)
+                {
+                    _showEndingDialogue = false;
+                    RunState.Instance?.MarkRunComplete();
+                }
+            }
+            GUILayout.EndArea();
         }
 
         private void DrawRoomClearedFlash()
@@ -405,6 +479,32 @@ namespace HollowDescent.UI_Debug
             var h = 40f;
             GUI.Label(new Rect((Screen.width - w) * 0.5f, Screen.height * 0.3f, w, h), _clearedText, _clearedStyle);
             GUI.contentColor = prev;
+        }
+
+        private void DrawBossHealthBarIfNeeded()
+        {
+            var gm = GameManager.Instance;
+            if (gm == null) return;
+            if (!string.Equals(gm.CurrentRoomName, "The Architect", System.StringComparison.OrdinalIgnoreCase)) return;
+            var boss = FindFirstObjectByType<EnemyFinalBoss>();
+            if (boss == null) return;
+
+            var cur = boss.GetCurrentHealth();
+            var max = Mathf.Max(1, boss.GetMaxHealth());
+            var t = Mathf.Clamp01((float)cur / max);
+            const float w = 280f;
+            const float h = 16f;
+            var x = (Screen.width - w) * 0.5f;
+            var y = padding + 4f;
+
+            var prev = GUI.color;
+            GUI.color = new Color(0.08f, 0.08f, 0.1f, 0.88f);
+            GUI.DrawTexture(new Rect(x, y, w, h), Texture2D.whiteTexture);
+            GUI.color = new Color(0.62f, 0.2f, 0.78f, 0.96f);
+            GUI.DrawTexture(new Rect(x, y, w * t, h), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+            GUI.Label(new Rect(x, y - 22f, w, 22), "<b>The Architect</b>", _labelStyle);
+            GUI.color = prev;
         }
 
         private void DrawActiveBuffs(int startX, int startY)

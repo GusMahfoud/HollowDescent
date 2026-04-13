@@ -69,7 +69,12 @@ namespace HollowDescent.AI
                 else if (dist > preferredDistance * 1.1f)
                     v = dir * moveSpeed;
                 else
-                    v = Vector3.zero;
+                {
+                    // At preferred range the old logic set velocity to zero, so shooters looked "stuck"; strafe instead.
+                    var perp = new Vector3(-dir.z, 0f, dir.x);
+                    var wobble = Mathf.Sin(Time.time * 2.4f);
+                    v = perp * (wobble * moveSpeed * 0.55f);
+                }
 
                 if (_rb != null)
                 {

@@ -10,11 +10,13 @@ namespace HollowDescent.LevelGen
     {
         [SerializeField] private int targetLevel = 2;
 
+        public void SetTargetLevel(int level) => targetLevel = level;
+
         private void OnTriggerEnter(Collider other)
         {
             if (!other.CompareTag("Player")) return;
             if (LevelManager.Instance != null)
-                LevelManager.Instance.LoadLevel(targetLevel);
+                LevelManager.Instance.LoadLevelDeferred(targetLevel);
         }
     }
 }

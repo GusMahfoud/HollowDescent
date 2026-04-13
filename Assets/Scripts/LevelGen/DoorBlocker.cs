@@ -82,8 +82,8 @@ namespace HollowDescent.LevelGen
             if (_audioSource == null)
                 _audioSource = gameObject.AddComponent<AudioSource>();
             _audioSource.playOnAwake = false;
-            // Keep door SFX clearly audible over music regardless of camera distance.
-            _audioSource.spatialBlend = 0f;
+            // Keep door SFX clearly audible over music regardless of camera distance (0 = 2D; 1 = full 3D).
+            _audioSource.spatialBlend = audioSpatialBlend;
             _audioSource.rolloffMode = AudioRolloffMode.Linear;
             _audioSource.maxDistance = 22f;
             _audioSource.minDistance = 1.5f;

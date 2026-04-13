@@ -53,6 +53,7 @@ namespace HollowDescent.Bootstrap
 
             remainingLives = 0;
             DeathScreenOpen = true;
+            RunState.Instance?.FreezeRunTimer();
             Time.timeScale = 0f;
         }
 
@@ -95,7 +96,7 @@ namespace HollowDescent.Bootstrap
             foreach (var enemy in enemies)
             {
                 if (enemy != null)
-                    DestroyImmediate(enemy.gameObject);
+                    Destroy(enemy.gameObject);
             }
 
             currentRoomName = "Start (Safe)";

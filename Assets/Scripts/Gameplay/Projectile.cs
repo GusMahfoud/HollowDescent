@@ -5,7 +5,7 @@ using HollowDescent.AI;
 namespace HollowDescent.Gameplay
 {
     /// <summary>
-    /// Kinematic rigidbody moved in FixedUpdate so physics queries see the bullet; damages EnemyBase on overlap or sweep.
+    /// Kinematic rigidbody moved in FixedUpdate; sphere-casts along each segment so walls block shots (no room-wide overlap).
     /// </summary>
     public class Projectile : MonoBehaviour
     {
@@ -17,7 +17,6 @@ namespace HollowDescent.Gameplay
         private int _damage = 1;
         private Collider _myCollider;
         private Rigidbody _rb;
-        private readonly Collider[] _overlapScratch = new Collider[32];
         private const int CastMask = ~0;
 
         public void Init(Vector3 direction, float speed, float lifetime, float hitRadius, int damage = 1)
@@ -38,9 +37,7 @@ namespace HollowDescent.Gameplay
             var step = _direction * (_speed * Time.fixedDeltaTime);
             var nextPos = pos + step;
 
-            if (TryDamageEnemyAtPosition(pos) || TryDamageEnemyAtPosition(nextPos))
-                return;
-
+            // Only segment casts — no overlap spheres (those ignored walls and hit through rooms).
             if (ProcessSegmentHits(pos, nextPos))
                 return;
 
@@ -48,37 +45,12 @@ namespace HollowDescent.Gameplay
                 _rb.MovePosition(nextPos);
             else
                 transform.position = nextPos;
-
-            var after = _rb != null ? _rb.position : transform.position;
-            if (TryDamageEnemyAtPosition(after))
-                return;
         }
 
         private void Update()
         {
             if (Time.time - _spawnTime >= _lifetime)
                 Destroy(gameObject);
-        }
-
-        private bool TryDamageEnemyAtPosition(Vector3 position)
-        {
-            var r = Mathf.Max(0.28f, _hitRadius * 2.25f);
-            var count = Physics.OverlapSphereNonAlloc(position, r, _overlapScratch, CastMask, QueryTriggerInteraction.Collide);
-            for (var i = 0; i < count; i++)
-            {
-                var c = _overlapScratch[i];
-                if (c == null || c.transform == transform) continue;
-                if (IsMyCollider(c)) continue;
-                if (c.CompareTag("Player")) continue;
-                var enemy = ResolveEnemy(c);
-                if (enemy != null)
-                {
-                    enemy.TakeDamage(_damage);
-                    Destroy(gameObject);
-                    return true;
-                }
-            }
-            return false;
         }
 
         private bool IsMyCollider(Collider c)
@@ -111,6 +83,7 @@ namespace HollowDescent.Gameplay
                 if (IsMyCollider(h.collider)) continue;
                 if (h.collider.CompareTag("Player")) continue;
 
+                // Enemies first (including trigger colliders on some setups).
                 var enemy = ResolveEnemy(h.collider);
                 if (enemy != null)
                 {
@@ -119,9 +92,11 @@ namespace HollowDescent.Gameplay
                     return true;
                 }
 
+                // Non-enemy triggers (room volumes, pickups): do not block the shot.
                 if (h.collider.isTrigger)
                     continue;
 
+                // Solid geometry (walls, doors): stop here.
                 Destroy(gameObject);
                 return true;
             }
@@ -134,16 +109,5 @@ namespace HollowDescent.Gameplay
             return c.GetComponent<EnemyBase>() ?? c.GetComponentInParent<EnemyBase>() ?? c.GetComponentInChildren<EnemyBase>();
         }
 
-        private void OnTriggerEnter(Collider other)
-        {
-            if (other == null || other.CompareTag("Player")) return;
-            if (IsMyCollider(other)) return;
-            var enemy = ResolveEnemy(other);
-            if (enemy != null)
-            {
-                enemy.TakeDamage(1);
-                Destroy(gameObject);
-            }
-        }
     }
 }

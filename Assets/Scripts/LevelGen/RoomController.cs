@@ -15,7 +15,9 @@ namespace HollowDescent.LevelGen
         Safe,
         Boss,
         Exit,
-        LevelExit
+        LevelExit,
+        /// <summary>Unique final encounter; run completes only after this boss falls.</summary>
+        FinalBoss
     }
 
     /// <summary>
@@ -34,6 +36,7 @@ namespace HollowDescent.LevelGen
         [SerializeField] private GameObject chaserPrefab;
         [SerializeField] private GameObject shooterPrefab;
         [SerializeField] private GameObject flankerPrefab;
+        [SerializeField] private GameObject finalBossPrefab;
 
         [Header("Encounter")]
         public int chaserCount = 2;
@@ -90,7 +93,7 @@ namespace HollowDescent.LevelGen
 
         private void Start()
         {
-            _isShopRoom = roomName == "Shop (Safe)";
+            _isShopRoom = roomName == "Shop (Safe)" || roomName == "L2 Merchant (Safe)";
             // Rooms should be traversable by default; combat rooms lock only once encounter starts.
             SetDoorsOpen(true, true);
         }
@@ -132,7 +135,7 @@ namespace HollowDescent.LevelGen
                 GameManager.Instance.SetCurrentRoom(roomName);
             if (_isShopRoom)
                 Gameplay.ShopSystem.Instance?.EnterShopRoom();
-            if (roomType == RoomType.Combat || roomType == RoomType.Boss)
+            if (roomType == RoomType.Combat || roomType == RoomType.Boss || roomType == RoomType.FinalBoss)
             {
                 SetRoomEnemiesPursuitEnabled(true);
                 if (_encounterActive && !_encounterCleared)
@@ -140,7 +143,7 @@ namespace HollowDescent.LevelGen
             }
             if (roomType == RoomType.StartSafe || roomType == RoomType.Safe || roomType == RoomType.LevelExit) return;
             if (_encounterCleared) return;
-            if (roomType != RoomType.Combat && roomType != RoomType.Boss) return;
+            if (roomType != RoomType.Combat && roomType != RoomType.Boss && roomType != RoomType.FinalBoss) return;
             if (_encounterActive) return;
 
             _encounterActive = true;
@@ -163,7 +166,7 @@ namespace HollowDescent.LevelGen
 
         public void HandlePlayerDeathInRoom()
         {
-            if (roomType != RoomType.Combat && roomType != RoomType.Boss) return;
+            if (roomType != RoomType.Combat && roomType != RoomType.Boss && roomType != RoomType.FinalBoss) return;
             if (_encounterCleared) return;
             SetDoorsOpen(true);
             SetRoomEnemiesPursuitEnabled(false);
@@ -179,6 +182,12 @@ namespace HollowDescent.LevelGen
         private void SpawnEnemies()
         {
             _spawnedEnemies.Clear();
+            if (roomType == RoomType.FinalBoss)
+            {
+                SpawnFinalBossEncounter();
+                return;
+            }
+
             var player = GameObject.FindGameObjectWithTag("Player");
             if (player == null)
             {
@@ -235,6 +244,75 @@ namespace HollowDescent.LevelGen
             if (flankerCount > 0) parts.Add($"{flankerCount} Flanker{(flankerCount > 1 ? "s" : "")}");
             GameManager.Instance?.SetEnemyComposition(string.Join(", ", parts));
             FinishEncounterIfNoEnemiesSpawned();
+        }
+
+        private void SpawnFinalBossEncounter()
+        {
+            var player = GameObject.FindGameObjectWithTag("Player");
+            if (player == null)
+            {
+                FinishEncounterIfNoEnemiesSpawned();
+                return;
+            }
+
+            var pos = enemySpawnPoints.Count > 0 ? enemySpawnPoints[0].position : transform.position + Vector3.up * 0.1f;
+            GameObject go;
+            EnemyFinalBoss fb;
+            if (finalBossPrefab != null)
+            {
+                go = Instantiate(finalBossPrefab, pos, Quaternion.identity);
+                go.transform.SetParent(transform, true);
+                fb = go.GetComponent<EnemyFinalBoss>();
+                if (fb == null) fb = go.AddComponent<EnemyFinalBoss>();
+            }
+            else
+            {
+                go = CreateFinalBossPrimitive(pos);
+                go.transform.SetParent(transform, true);
+                fb = go.GetComponent<EnemyFinalBoss>();
+            }
+
+            fb.Initialize(this);
+            fb.OnDeath += OnEnemyDied;
+            _spawnedEnemies.Add(fb);
+            UpdateGMEnemyCount();
+            GameManager.Instance?.SetEnemyComposition("The Architect");
+            FinishEncounterIfNoEnemiesSpawned();
+        }
+
+        private static GameObject CreateFinalBossPrimitive(Vector3 pos)
+        {
+            var go = SimpleFigureVisuals.CreateFinalBossEnemy(pos);
+            go.AddComponent<EnemyFinalBoss>();
+            return go;
+        }
+
+        /// <summary>Minions spawned by <see cref="EnemyFinalBoss"/>; killing them does not clear the room.</summary>
+        public void RegisterFinalBossMinion(EnemyBase minion)
+        {
+            if (minion == null || roomType != RoomType.FinalBoss) return;
+            minion.OnDeath += OnFinalBossMinionDied;
+            _spawnedEnemies.Add(minion);
+            UpdateGMEnemyCount();
+        }
+
+        private void OnFinalBossMinionDied(EnemyBase m)
+        {
+            if (m != null) m.OnDeath -= OnFinalBossMinionDied;
+            _spawnedEnemies.Remove(m);
+            UpdateGMEnemyCount();
+        }
+
+        private void FinalBossCleanupMinions()
+        {
+            for (var i = _spawnedEnemies.Count - 1; i >= 0; i--)
+            {
+                var e = _spawnedEnemies[i];
+                if (e == null || e is EnemyFinalBoss) continue;
+                e.OnDeath -= OnFinalBossMinionDied;
+                Destroy(e.gameObject);
+                _spawnedEnemies.RemoveAt(i);
+            }
         }
 
         /// <summary>
@@ -323,70 +401,43 @@ namespace HollowDescent.LevelGen
         private static void MaybeTintRuntimePrimitive(EnemyBase eb, System.Random rng, bool flanker, bool shooter)
         {
             if (eb == null || !eb.gameObject.name.StartsWith("Enemy_", StringComparison.Ordinal)) return;
-            var r = eb.GetComponent<Renderer>();
-            if (r == null) return;
+            Color c;
             if (flanker)
-                GrayboxTintUtil.Apply(r, new Color(0.5f + (float)rng.NextDouble() * 0.25f, 0.1f, 0.5f + (float)rng.NextDouble() * 0.22f));
+                c = new Color(0.5f + (float)rng.NextDouble() * 0.25f, 0.1f, 0.5f + (float)rng.NextDouble() * 0.22f);
             else if (shooter)
-                GrayboxTintUtil.Apply(r, new Color(0.78f + (float)rng.NextDouble() * 0.15f, 0.32f + (float)rng.NextDouble() * 0.18f, 0.06f));
+                c = new Color(0.78f + (float)rng.NextDouble() * 0.15f, 0.32f + (float)rng.NextDouble() * 0.18f, 0.06f);
             else
-                GrayboxTintUtil.Apply(r, new Color(0.85f + (float)rng.NextDouble() * 0.1f, 0.1f + (float)rng.NextDouble() * 0.18f, 0.1f + (float)rng.NextDouble() * 0.18f));
+                c = new Color(0.85f + (float)rng.NextDouble() * 0.1f, 0.1f + (float)rng.NextDouble() * 0.18f, 0.1f + (float)rng.NextDouble() * 0.18f);
+            foreach (var r in eb.GetComponentsInChildren<Renderer>())
+            {
+                if (r != null) GrayboxTintUtil.Apply(r, c);
+            }
         }
 
-        private GameObject CreateChaserPrimitive(Vector3 pos)
-        {
-            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            go.name = "Enemy_Chaser";
-            go.transform.position = pos;
-            go.transform.localScale = new Vector3(0.9f, 1.2f, 0.9f);
-            var col = go.GetComponent<Collider>();
-            if (col != null) col.isTrigger = false;
-            var rb = go.AddComponent<Rigidbody>();
-            rb.useGravity = false;
-            rb.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY;
-            rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
-            GrayboxTintUtil.Apply(go.GetComponent<Renderer>(), new Color(0.9f, 0.2f, 0.2f));
-            var chaser = go.AddComponent<EnemyChaser>();
-            chaser.SetPlayer(GameObject.FindGameObjectWithTag("Player")?.transform);
-            return go;
-        }
+        private GameObject CreateChaserPrimitive(Vector3 pos) => SimpleFigureVisuals.CreateChaserEnemy(pos);
 
-        private GameObject CreateShooterPrimitive(Vector3 pos)
-        {
-            var go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            go.name = "Enemy_Shooter";
-            go.transform.position = pos;
-            go.transform.localScale = new Vector3(0.8f, 1f, 0.8f);
-            var col = go.GetComponent<Collider>();
-            if (col != null) col.isTrigger = false;
-            var rb = go.AddComponent<Rigidbody>();
-            rb.useGravity = false;
-            rb.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY;
-            GrayboxTintUtil.Apply(go.GetComponent<Renderer>(), new Color(0.8f, 0.4f, 0.1f));
-            var shooter = go.AddComponent<EnemyShooter>();
-            shooter.SetPlayer(GameObject.FindGameObjectWithTag("Player")?.transform);
-            return go;
-        }
+        private GameObject CreateShooterPrimitive(Vector3 pos) => SimpleFigureVisuals.CreateShooterEnemy(pos);
 
-        private GameObject CreateFlankerPrimitive(Vector3 pos)
-        {
-            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            go.name = "Enemy_Flanker";
-            go.transform.position = pos;
-            go.transform.localScale = new Vector3(0.7f, 1f, 0.7f);
-            var col = go.GetComponent<Collider>();
-            if (col != null) col.isTrigger = false;
-            var rb = go.AddComponent<Rigidbody>();
-            rb.useGravity = false;
-            rb.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY;
-            GrayboxTintUtil.Apply(go.GetComponent<Renderer>(), new Color(0.6f, 0.2f, 0.6f));
-            var flanker = go.AddComponent<EnemyFlanker>();
-            flanker.SetPlayer(GameObject.FindGameObjectWithTag("Player")?.transform);
-            return go;
-        }
+        private GameObject CreateFlankerPrimitive(Vector3 pos) => SimpleFigureVisuals.CreateFlankerEnemy(pos);
 
         private void OnEnemyDied(EnemyBase enemy)
         {
+            if (enemy is EnemyFinalBoss)
+            {
+                FinalBossCleanupMinions();
+                _spawnedEnemies.Remove(enemy);
+                UpdateGMEnemyCount();
+                OnEncounterCleared();
+                return;
+            }
+
+            if (roomType == RoomType.FinalBoss)
+            {
+                _spawnedEnemies.Remove(enemy);
+                UpdateGMEnemyCount();
+                return;
+            }
+
             _spawnedEnemies.Remove(enemy);
             UpdateGMEnemyCount();
             if (_spawnedEnemies.Count <= 0)
@@ -407,33 +458,50 @@ namespace HollowDescent.LevelGen
             if (GameManager.Instance != null)
                 GameManager.Instance.SetEnemiesRemaining(0);
             GameManager.Instance?.SetEnemyComposition("");
-            var echoBonus = roomType == RoomType.Boss ? 25 : 10;
+
+            var echoBonus = roomType == RoomType.FinalBoss ? 60 : (roomType == RoomType.Boss ? 25 : 10);
             RunState.Instance?.RecordRoomCleared();
             RunState.Instance?.AddCurrency(echoBonus);
-            if (roomType == RoomType.Boss)
-                RunState.Instance?.MarkRunComplete();
+
+            if (roomType == RoomType.FinalBoss)
+            {
+                var hudEnd = FindFirstObjectByType<HollowDescent.UI_Debug.MinimalHUD>();
+                if (hudEnd != null) hudEnd.QueueFinalEndingSequence();
+                else RunState.Instance?.MarkRunComplete();
+            }
+
             var hud = FindFirstObjectByType<HollowDescent.UI_Debug.MinimalHUD>();
-            if (hud != null) hud.NotifyRoomCleared(echoBonus, roomType == RoomType.Boss);
+            if (hud != null)
+                hud.NotifyRoomCleared(echoBonus, roomType == RoomType.Boss, roomType == RoomType.FinalBoss);
         }
 
         private void SpawnRewardMarker()
         {
             if (_rewardMarker != null) return;
-            var center = _trigger != null ? _trigger.bounds.center : transform.position;
-            _rewardMarker = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            _rewardMarker.name = "RewardMarker";
-            _rewardMarker.transform.position = center + Vector3.up * 0.6f;
-            _rewardMarker.transform.localScale = new Vector3(0.8f, 0.8f, 0.8f);
-            var col = _rewardMarker.GetComponent<Collider>();
-            if (col != null)
-            {
-                col.enabled = true;
-                col.isTrigger = true;
-            }
-            var r = _rewardMarker.GetComponent<Renderer>();
-            if (r != null) GrayboxTintUtil.Apply(r, new Color(1f, 0.9f, 0.2f));
+            // Anchor to room controller pivot (floor center). Using trigger world bounds can offset the reward outside the visible room.
+            _rewardMarker = new GameObject("RewardMarker");
+            _rewardMarker.transform.SetParent(transform, false);
+            _rewardMarker.transform.localPosition = new Vector3(0f, 0.85f, 0f);
+            _rewardMarker.transform.localRotation = Quaternion.identity;
+
+            var sc = _rewardMarker.AddComponent<SphereCollider>();
+            sc.isTrigger = true;
+            sc.radius = 0.95f;
+            sc.center = Vector3.zero;
+
+            var coin = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            coin.name = "CoinVisual";
+            var coinCol = coin.GetComponent<Collider>();
+            if (coinCol != null) Destroy(coinCol);
+            coin.transform.SetParent(_rewardMarker.transform, false);
+            coin.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            coin.transform.localScale = new Vector3(1.45f, 0.06f, 1.45f);
+            coin.transform.localPosition = Vector3.zero;
+            var coinR = coin.GetComponent<Renderer>();
+            if (coinR != null) GrayboxTintUtil.Apply(coinR, new Color(1f, 0.82f, 0.12f));
+
             var pickup = _rewardMarker.AddComponent<RewardPickup>();
-            pickup.SetAmount(roomType == RoomType.Boss ? 40 : 15);
+            pickup.SetAmount(roomType == RoomType.FinalBoss ? 60 : (roomType == RoomType.Boss ? 40 : 15));
         }
 
         private void OnDrawGizmos()
