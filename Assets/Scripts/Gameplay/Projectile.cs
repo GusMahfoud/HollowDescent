@@ -18,6 +18,7 @@ namespace HollowDescent.Gameplay
         private Collider _myCollider;
         private Rigidbody _rb;
         private const int CastMask = ~0;
+        private const float MinVisibleTime = 0.06f;
 
         public void Init(Vector3 direction, float speed, float lifetime, float hitRadius, int damage = 1)
         {
@@ -71,6 +72,10 @@ namespace HollowDescent.Gameplay
             var castFrom = from + dir * skin;
             var castDist = Mathf.Max(0f, dist - skin);
 
+            // Grace period: skip all hits so the projectile always renders for a few frames
+            if (Time.time - _spawnTime < MinVisibleTime)
+                return false;
+
             var hits = Physics.SphereCastAll(castFrom, castRadius, dir, castDist, CastMask, QueryTriggerInteraction.Collide);
             if (hits == null || hits.Length == 0)
                 return false;
@@ -94,6 +99,10 @@ namespace HollowDescent.Gameplay
 
                 // Non-enemy triggers (room volumes, pickups): do not block the shot.
                 if (h.collider.isTrigger)
+                    continue;
+
+                // Floor planes: ignore so downward shots don't clip the ground.
+                if (h.collider.name.StartsWith("Floor_", StringComparison.Ordinal))
                     continue;
 
                 // Solid geometry (walls, doors): stop here.

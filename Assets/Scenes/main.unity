@@ -432,6 +432,7 @@ MonoBehaviour:
   backgroundMusicClipOrNull: {fileID: 8300000, guid: 2f8295207b5ad3d4f982bc3f31b7dbec, type: 3}
   backgroundMusicVolume: 0.35
   doorCloseSfxClipOrNull: {fileID: 8300000, guid: 10ce616c8dc1a0e498a8784a2ad98b19, type: 3}
+  controlUICanvasOrNull: {fileID: 6890161852926353040, guid: 9b3bb6caef65bcd4d8d2542424eadeef, type: 3}
   showStartupMenu: 1
   startupGameTitle: Hollow Descent
   startupButtonText: Start Game
@@ -476,11 +477,34 @@ MonoBehaviour:
   quitButtonOrNull: {fileID: 1289026882}
   startButtonTextOrNull: {fileID: 0}
   startButtonTmpTextOrNull: {fileID: 0}
+  controlsPanelOrNull: {fileID: 0}
+  controlsTextOrNull: {fileID: 0}
+  controlsTmpTextOrNull: {fileID: 0}
+  controlsContinueButtonOrNull: {fileID: 0}
+  controlsContinueTextOrNull: {fileID: 0}
+  controlsContinueTmpTextOrNull: {fileID: 0}
   defaultSubtitle: Descend if you dare.
   titlePulseLow: {r: 0.92, g: 0.93, b: 0.95, a: 1}
   titlePulseHigh: {r: 1, g: 1, b: 1, a: 1}
   titlePulseSpeed: 1.8
   forceOpaqueBackdrop: 1
+  showControlsBeforeStart: 1
+  controlsDescription: 'Controls
+
+
+    WASD - Move
+
+    Mouse - Aim
+
+    Left Click
+    - Shoot
+
+    Esc - Shop (in safe/shop rooms)
+
+
+    Tip: Clear rooms to open doors
+    and collect rewards.'
+  controlsContinueLabel: Continue
 --- !u!114 &1289026882 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 4296230101233011796, guid: 16353bc47af8c6d4a985aba82a801084, type: 3}
@@ -593,6 +617,10 @@ PrefabInstance:
     - target: {fileID: 2782046883441241397, guid: 16353bc47af8c6d4a985aba82a801084, type: 3}
       propertyPath: m_Name
       value: Start Menu
+      objectReference: {fileID: 0}
+    - target: {fileID: 2827374197912383104, guid: 16353bc47af8c6d4a985aba82a801084, type: 3}
+      propertyPath: m_PreserveAspect
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3150837215171199815, guid: 16353bc47af8c6d4a985aba82a801084, type: 3}
       propertyPath: m_AdditionalShaderChannelsFlag
@@ -711,12 +739,36 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8113062288946417325, guid: 16353bc47af8c6d4a985aba82a801084, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 2.23839
+      objectReference: {fileID: 0}
+    - target: {fileID: 8113062288946417325, guid: 16353bc47af8c6d4a985aba82a801084, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 2.05375
+      objectReference: {fileID: 0}
+    - target: {fileID: 8113062288946417325, guid: 16353bc47af8c6d4a985aba82a801084, type: 3}
       propertyPath: m_AnchoredPosition.x
       value: -36
       objectReference: {fileID: 0}
     - target: {fileID: 8113062288946417325, guid: 16353bc47af8c6d4a985aba82a801084, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 67
+      value: 126
+      objectReference: {fileID: 0}
+    - target: {fileID: 8845534934952468678, guid: 16353bc47af8c6d4a985aba82a801084, type: 3}
+      propertyPath: m_UiScaleMode
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8845534934952468678, guid: 16353bc47af8c6d4a985aba82a801084, type: 3}
+      propertyPath: m_ReferenceResolution.x
+      value: 1920
+      objectReference: {fileID: 0}
+    - target: {fileID: 8845534934952468678, guid: 16353bc47af8c6d4a985aba82a801084, type: 3}
+      propertyPath: m_ReferenceResolution.y
+      value: 1080
+      objectReference: {fileID: 0}
+    - target: {fileID: 8845534934952468678, guid: 16353bc47af8c6d4a985aba82a801084, type: 3}
+      propertyPath: m_ReferencePixelsPerUnit
+      value: 100
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

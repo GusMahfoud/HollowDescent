@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using TMPro;
+using HollowDescent.Bootstrap;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -51,6 +52,7 @@ namespace HollowDescent.UI_Debug
         private Action _onStart;
         private float _pulseTime;
         private bool _waitingForControlsContinue;
+        private bool _externalControlsPanel;
 
         public static StartMenuOverlay Show(string title, string buttonText, Action onStart)
         {
@@ -59,6 +61,7 @@ namespace HollowDescent.UI_Debug
             {
                 SetOverlayVisible(existing, true);
                 existing.Configure(title, buttonText, onStart);
+                existing.TryAutoBindExternalControlsPanel();
                 return existing;
             }
 
@@ -72,7 +75,67 @@ namespace HollowDescent.UI_Debug
             var instance = Instantiate(prefab);
             SetOverlayVisible(instance, true);
             instance.Configure(title, buttonText, onStart);
+            instance.TryAutoBindExternalControlsPanel();
             return instance;
+        }
+
+        /// <summary>
+        /// Assigns an externally-built controls panel. Skips runtime generation entirely.
+        /// </summary>
+        public void SetExternalControlsPanel(GameObject panel)
+        {
+            if (panel == null) return;
+
+            AttachPanelToOverlayCanvas(panel);
+            controlsPanelOrNull = panel;
+            _externalControlsPanel = true;
+
+            // Wire up children from the provided panel
+            var externalText = FindInChild<Text>(panel, "ControlsText");
+            var externalTmpText = FindInChild<TMP_Text>(panel, "ControlsText");
+            var externalContinueButton = FindInChild<Button>(panel, "ControlsContinueButton");
+
+            if (externalText != null) controlsTextOrNull = externalText;
+            if (externalTmpText != null) controlsTmpTextOrNull = externalTmpText;
+            if (externalContinueButton != null) controlsContinueButtonOrNull = externalContinueButton;
+
+            if (controlsContinueButtonOrNull != null)
+            {
+                controlsContinueTextOrNull = controlsContinueButtonOrNull.GetComponentInChildren<Text>(true);
+                controlsContinueTmpTextOrNull = controlsContinueButtonOrNull.GetComponentInChildren<TMP_Text>(true);
+                controlsContinueButtonOrNull.onClick.RemoveListener(OnControlsContinueClicked);
+                controlsContinueButtonOrNull.onClick.AddListener(OnControlsContinueClicked);
+            }
+            else
+            {
+                Debug.LogWarning("[StartMenuOverlay] External controls panel is missing a Button named 'ControlsContinueButton'.");
+            }
+
+            if (controlsTextOrNull == null && controlsTmpTextOrNull == null)
+                Debug.LogWarning("[StartMenuOverlay] External controls panel is missing 'ControlsText' (Text/TMP). This is optional if your panel already has static text.");
+
+            SetControlsPopupVisible(false);
+        }
+
+        private void AttachPanelToOverlayCanvas(GameObject panel)
+        {
+            if (panel == null) return;
+            var overlayCanvas = GetComponentInParent<Canvas>();
+            if (overlayCanvas == null) return;
+
+            var panelTransform = panel.transform;
+            if (panelTransform.parent != overlayCanvas.transform)
+                panelTransform.SetParent(overlayCanvas.transform, false);
+        }
+
+        private static T FindInChild<T>(GameObject parent, string childName) where T : Component
+        {
+            foreach (var c in parent.GetComponentsInChildren<T>(true))
+            {
+                if (c != null && string.Equals(c.name, childName, StringComparison.OrdinalIgnoreCase))
+                    return c;
+            }
+            return null;
         }
 
         public void AssignReferences(Image backdrop, Text title, Text subtitle, Button startButton, Text startButtonText)
@@ -155,6 +218,8 @@ namespace HollowDescent.UI_Debug
         {
             if (showControlsBeforeStart)
             {
+                TryAutoBindExternalControlsPanel();
+                Debug.Log($"[StartMenuOverlay] Start clicked. Controls source: {(_externalControlsPanel ? "external" : "internal/fallback")}.");
                 EnsureControlsPopupBuilt();
                 if (controlsPanelOrNull != null)
                 {
@@ -168,11 +233,50 @@ namespace HollowDescent.UI_Debug
             StartRunNow();
         }
 
+        private void TryAutoBindExternalControlsPanel()
+        {
+            if (_externalControlsPanel && controlsPanelOrNull != null) return;
+
+            var bootstraps = FindObjectsByType<GameBootstrap>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            if (bootstraps == null || bootstraps.Length == 0) return;
+
+            foreach (var bootstrap in bootstraps)
+            {
+                if (bootstrap == null) continue;
+                var assignedPanel = bootstrap.ControlUICanvas;
+                if (assignedPanel == null) continue;
+
+                var runtimePanel = assignedPanel;
+                if (!runtimePanel.scene.IsValid())
+                {
+                    runtimePanel = Instantiate(assignedPanel);
+                    runtimePanel.name = assignedPanel.name;
+                    runtimePanel.SetActive(false);
+                }
+
+                SetExternalControlsPanel(runtimePanel);
+                Debug.Log($"[StartMenuOverlay] Auto-bound external controls panel from GameBootstrap '{bootstrap.name}'.");
+                return;
+            }
+        }
+
         private void OnControlsContinueClicked()
         {
-            if (!_waitingForControlsContinue) return;
+            if (!_waitingForControlsContinue)
+            {
+                var popupVisible = controlsPanelOrNull != null && controlsPanelOrNull.activeInHierarchy;
+                if (!popupVisible)
+                {
+                    Debug.Log("[StartMenuOverlay] Continue clicked while controls popup was not active; ignoring.");
+                    return;
+                }
+
+                Debug.LogWarning("[StartMenuOverlay] Continue clicked with waiting flag false; proceeding anyway because controls popup is visible.");
+            }
+
             _waitingForControlsContinue = false;
             SetControlsPopupVisible(false);
+            Debug.Log("[StartMenuOverlay] Continue accepted; starting run.");
             StartRunNow();
         }
 
@@ -298,7 +402,8 @@ namespace HollowDescent.UI_Debug
         {
             if (controlsPanelOrNull != null)
             {
-                ApplyControlsPopupLayout();
+                if (!_externalControlsPanel)
+                    ApplyControlsPopupLayout();
                 return;
             }
 

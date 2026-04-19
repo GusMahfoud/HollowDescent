@@ -34,16 +34,22 @@ namespace HollowDescent.Bootstrap
         [SerializeField] private AudioClip backgroundMusicClipOrNull;
         [SerializeField, Range(0f, 1f)] private float backgroundMusicVolume = 0.12f;
         [SerializeField] private AudioClip doorCloseSfxClipOrNull;
+        [Header("UI")]
+        [SerializeField] private GameObject controlUICanvasOrNull;
         [Header("Startup Menu")]
         [SerializeField] private bool showStartupMenu = true;
         [SerializeField] private string startupGameTitle = "Hollow Descent";
         [SerializeField] private string startupButtonText = "Start Game";
+
+        /// <summary>The control UI object assigned in the Inspector, if any.</summary>
+        public GameObject ControlUICanvas => controlUICanvasOrNull;
 
         private GameObject _player;
         private Camera _camera;
         private FloorGenerator _floorGen;
         private GameManager _gm;
         private bool _hasBootstrapped;
+        private GameObject _runtimeControlUiOrNull;
 
         private void Start()
         {
@@ -51,7 +57,10 @@ namespace HollowDescent.Bootstrap
 
             if (showStartupMenu)
             {
-                StartMenuOverlay.Show(startupGameTitle, startupButtonText, BootstrapGame);
+                var overlay = StartMenuOverlay.Show(startupGameTitle, startupButtonText, BootstrapGame);
+                var controlsPanel = ResolveControlsPanelForOverlay();
+                if (overlay != null && controlsPanel != null)
+                    overlay.SetExternalControlsPanel(controlsPanel);
                 return;
             }
 
@@ -64,7 +73,29 @@ namespace HollowDescent.Bootstrap
         public void ShowMainMenu()
         {
             _hasBootstrapped = false;
-            StartMenuOverlay.Show(startupGameTitle, startupButtonText, RebootGame);
+            var overlay = StartMenuOverlay.Show(startupGameTitle, startupButtonText, RebootGame);
+            var controlsPanel = ResolveControlsPanelForOverlay();
+            if (overlay != null && controlsPanel != null)
+                overlay.SetExternalControlsPanel(controlsPanel);
+        }
+
+        private GameObject ResolveControlsPanelForOverlay()
+        {
+            if (controlUICanvasOrNull == null) return null;
+
+            // Scene objects are already valid runtime instances.
+            if (controlUICanvasOrNull.scene.IsValid())
+                return controlUICanvasOrNull;
+
+            // Project asset (prefab) reference: instantiate once and reuse.
+            if (_runtimeControlUiOrNull == null)
+            {
+                _runtimeControlUiOrNull = Instantiate(controlUICanvasOrNull);
+                _runtimeControlUiOrNull.name = controlUICanvasOrNull.name;
+                _runtimeControlUiOrNull.SetActive(false);
+            }
+
+            return _runtimeControlUiOrNull;
         }
 
         private void RebootGame()

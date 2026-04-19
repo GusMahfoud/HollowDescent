@@ -8,8 +8,8 @@ namespace HollowDescent.Gameplay
     [DisallowMultipleComponent]
     public class EnemyHitFlash : MonoBehaviour
     {
-        [SerializeField] private Color flashColor = new Color(1f, 0.92f, 0.85f, 1f);
-        [SerializeField] private float flashDuration = 0.14f;
+        [SerializeField] private Color flashColor = new Color(1f, 1f, 1f, 1f);
+        [SerializeField] private float flashDuration = 0.22f;
 
         private struct Snap
         {
@@ -65,6 +65,7 @@ namespace HollowDescent.Gameplay
                     if (s.MaterialIndex >= mats.Length) continue;
                     var blended = Color.Lerp(s.Original, flashColor, t * t);
                     WriteSurfaceColor(mats[s.MaterialIndex], blended, s.HasBaseColor);
+                    s.Renderer.materials = mats;
                 }
                 yield return null;
             }
@@ -82,6 +83,7 @@ namespace HollowDescent.Gameplay
                 var mats = s.Renderer.materials;
                 if (s.MaterialIndex >= mats.Length) continue;
                 WriteSurfaceColor(mats[s.MaterialIndex], s.Original, s.HasBaseColor);
+                s.Renderer.materials = mats;
             }
         }
 

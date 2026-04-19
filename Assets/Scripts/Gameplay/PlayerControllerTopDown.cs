@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using HollowDescent.LevelGen;
 
 namespace HollowDescent.Gameplay
 {
@@ -25,6 +26,7 @@ namespace HollowDescent.Gameplay
         private float _lastAimDebugTime = -999f;
 
         private float _nextFireTime;
+        private bool _fireBuffered;
         private Camera _cam;
         private Rigidbody _rb;
         private Vector3 _moveInput;
@@ -62,8 +64,18 @@ namespace HollowDescent.Gameplay
             _moveInput = new Vector3(h, 0f, v).normalized;
 
             AimAtMouse();
-            if (Mouse.current != null && Mouse.current.leftButton.isPressed && Time.time >= _nextFireTime)
-                Shoot();
+            if (Mouse.current != null)
+            {
+                // Buffer click so a brief tap is never lost between frames
+                if (Mouse.current.leftButton.wasPressedThisFrame)
+                    _fireBuffered = true;
+
+                if ((Mouse.current.leftButton.isPressed || _fireBuffered) && Time.time >= _nextFireTime)
+                {
+                    _fireBuffered = false;
+                    Shoot();
+                }
+            }
         }
 
         private void FixedUpdate()
@@ -187,11 +199,35 @@ namespace HollowDescent.Gameplay
             proj.name = "Projectile";
             proj.transform.position = shootOrigin;
             proj.transform.localScale = Vector3.one * (projectileRadius * 2f);
+
+            // Bright emissive URP Lit material so the projectile is always visible
+            var rend = proj.GetComponent<Renderer>();
+            if (rend != null)
+            {
+                var projColor = new Color(0.2f, 0.9f, 1f); // cyan
+                GrayboxTintUtil.Apply(rend, projColor);
+                var mat = rend.sharedMaterial;
+                if (mat != null)
+                {
+                    mat.EnableKeyword("_EMISSION");
+                    if (mat.HasProperty("_EmissionColor"))
+                        mat.SetColor("_EmissionColor", projColor * 3f);
+                }
+            }
+
+            // Small point light so it glows in dark rooms
+            var light = proj.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.color = new Color(0.2f, 0.9f, 1f);
+            light.intensity = 1.5f;
+            light.range = 3f;
+
             var col = proj.GetComponent<Collider>();
             if (col != null) col.isTrigger = true;
             var rb = proj.AddComponent<Rigidbody>();
             rb.isKinematic = true;
             rb.useGravity = false;
+            rb.interpolation = RigidbodyInterpolation.Interpolate;
             rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
             var p = proj.AddComponent<Projectile>();
             var hitR = Mathf.Max(0.08f, projectileRadius * 1.15f);
