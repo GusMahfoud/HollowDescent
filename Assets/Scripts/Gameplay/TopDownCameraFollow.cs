@@ -17,12 +17,12 @@ namespace HollowDescent.Gameplay
 
         public void SetTarget(Transform t) => target = t;
 
-        private void LateUpdate()
+        private void FixedUpdate()
         {
             if (target == null) return;
             var desiredPos = target.position + Quaternion.Euler(pitchAngle, 0f, 0f) * (Vector3.back * (height / Mathf.Sin(pitchAngle * Mathf.Deg2Rad)));
             desiredPos.y = target.position.y + height;
-            transform.position = Vector3.SmoothDamp(transform.position, desiredPos, ref _velocity, smoothTime);
+            transform.position = Vector3.SmoothDamp(transform.position, desiredPos, ref _velocity, smoothTime, Mathf.Infinity, Time.fixedDeltaTime);
             transform.LookAt(target.position + Vector3.up * 2f);
         }
     }

@@ -43,6 +43,7 @@ namespace HollowDescent.Gameplay
         {
             _cam = Camera.main;
             _rb = GetComponent<Rigidbody>();
+            _rb.interpolation = RigidbodyInterpolation.Interpolate;
             // Guard against stale serialized values from older prefabs/scenes.
             if (fireRate < 0.4f) fireRate = 0.5f;
         }
